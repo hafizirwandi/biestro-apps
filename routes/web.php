@@ -1,0 +1,117 @@
+<?php
+
+use Illuminate\Support\Facades\Auth;
+use UniSharp\LaravelFilemanager\Lfm;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\AnswerController;
+use App\Http\Controllers\SurveyController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\QuestionController;
+use App\Http\Controllers\AuditTraceController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\FileManagerController;
+use App\Http\Controllers\TicketController;
+use App\Http\Controllers\TicketPackageController;
+use App\Http\Controllers\WahanaController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
+|
+*/
+
+Route::get('/login', [AuthController::class, 'loginFormAdmin'])->name('login');
+Route::post('/auth', [AuthController::class, 'auth'])->name('auth');
+Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
+
+Route::get('/', function () {
+    if (Auth::check()) {
+        return redirect('/home');
+    } else {
+        return redirect('/login')->withErrors(['msg' => 'Please log in to continue your session']);
+    }
+});
+
+Route::middleware('auth:web')->group(function () {
+    Route::get('/home', [HomeController::class, 'index'])->name('home');
+
+    Route::get('/user', [UserController::class, 'index'])->name('user')->middleware('can:user-list');
+    Route::get('/user/create', [UserController::class, 'create'])->name('user.create')->middleware('can:user-create');
+    Route::get('/user/edit/{id}', [UserController::class, 'edit'])->name('user.edit')->middleware('can:user-edit');
+    Route::post('/user', [UserController::class, 'saveOrUpdate'])->name('user.store')->middleware('can:user-create');
+    Route::put('/user/{id}', [UserController::class, 'saveOrUpdate'])->name('user.update')->middleware('can:user-edit');
+    Route::delete('/user/delete', [UserController::class, 'destroy'])->name('user.destroy')->middleware('can:user-delete');
+
+    Route::get('/permission', [PermissionController::class, 'index'])->name('permission')->middleware('can:permission-list');
+    Route::get('/permission/create', [PermissionController::class, 'create'])->name('permission.create')->middleware('can:permission-create');
+    Route::get('/permission/edit/{id}', [PermissionController::class, 'edit'])->name('permission.edit')->middleware('can:permission-edit');
+    Route::post('/permission', [PermissionController::class, 'saveOrUpdate'])->name('permission.store')->middleware('can:permission-create');
+    Route::put('/permission/{id}', [PermissionController::class, 'saveOrUpdate'])->name('permission.update')->middleware('can:permission-edit');
+    Route::delete('/permission/delete', [PermissionController::class, 'destroy'])->name('permission.destroy')->middleware('can:permission-delete');
+
+    Route::get('/role', [RoleController::class, 'index'])->name('role')->middleware('can:role-list');
+    Route::get('/role/create', [RoleController::class, 'create'])->name('role.create')->middleware('can:role-create');
+    Route::get('/role/detail/{id}', [RoleController::class, 'detail'])->name('role.detail')->middleware('can:role-add-permission');
+    Route::get('/role/edit/{id}', [RoleController::class, 'edit'])->name('role.edit')->middleware('can:role-edit');
+    Route::post('/role', [RoleController::class, 'saveOrUpdate'])->name('role.store')->middleware('can:role-create');
+    Route::post('/role/savePermission', [RoleController::class, 'savePermission'])->name('role.savePermission')->middleware('can:role-add-permission');
+    Route::put('/role/{id}', [RoleController::class, 'saveOrUpdate'])->name('role.update')->middleware('can:role-edit');
+    Route::delete('/role/delete', [RoleController::class, 'destroy'])->name('role.destroy')->middleware('can:role-delete');
+
+
+
+    Route::prefix('wahana')->group(function () {
+        Route::get('/', [WahanaController::class, 'index'])->name('wahana')->middleware('can:wahana-list');
+        Route::get('/create', [WahanaController::class, 'create'])->name('wahana.create')->middleware('can:wahana-create');
+        Route::get('/edit/{id}', [WahanaController::class, 'edit'])->name('wahana.edit')->middleware('can:wahana-edit');
+        Route::post('/', [WahanaController::class, 'saveOrUpdate'])->name('wahana.store')->middleware('can:wahana-create');
+        Route::put('/{id}', [WahanaController::class, 'saveOrUpdate'])->name('wahana.update')->middleware('can:wahana-edit');
+        Route::delete('/delete', [WahanaController::class, 'destroy'])->name('wahana.destroy')->middleware('can:wahana-delete');
+    });
+
+
+    Route::prefix('tickect')->group(function () {
+        Route::get('/', [TicketController::class, 'index'])->name('tickect')->middleware('can:tickect-list');
+        Route::get('/create', [TicketController::class, 'create'])->name('tickect.create')->middleware('can:tickect-create');
+        Route::get('/edit/{id}', [TicketController::class, 'edit'])->name('tickect.edit')->middleware('can:tickect-edit');
+        Route::post('/', [TicketController::class, 'saveOrUpdate'])->name('tickect.store')->middleware('can:tickect-create');
+        Route::put('/{id}', [TicketController::class, 'saveOrUpdate'])->name('tickect.update')->middleware('can:tickect-edit');
+        Route::delete('/delete', [TicketController::class, 'destroy'])->name('tickect.destroy')->middleware('can:tickect-delete');
+    });
+
+    Route::prefix('ticket-package')->group(function () {
+        Route::get('/', [TicketPackageController::class, 'index'])->name('ticket-package')->middleware('can:ticket-package-list');
+        Route::get('/create', [TicketPackageController::class, 'create'])->name('ticket-package.create')->middleware('can:ticket-package-create');
+        Route::get('/edit/{id}', [TicketPackageController::class, 'edit'])->name('ticket-package.edit')->middleware('can:ticket-package-edit');
+        Route::post('/', [TicketPackageController::class, 'saveOrUpdate'])->name('ticket-package.store')->middleware('can:ticket-package-create');
+        Route::put('/{id}', [TicketPackageController::class, 'saveOrUpdate'])->name('ticket-package.update')->middleware('can:ticket-package-edit');
+        Route::delete('/delete', [TicketPackageController::class, 'destroy'])->name('ticket-package.destroy')->middleware('can:ticket-package-delete');
+    });
+
+
+
+
+    Route::prefix('laravel-filemanager')->group(function () {
+        Lfm::routes();
+    });
+    Route::get('/filemanager-view', [FileManagerController::class, 'index'])->name('filemanager');
+
+    Route::get('/setting', [SettingController::class, 'index'])->name('setting');
+    Route::post('/setting', [SettingController::class, 'save'])->name('setting.save');
+
+
+    Route::get('/audit-trace', [AuditTraceController::class, 'index'])->name('audit-trace');
+    Route::get('audit-trace/{id}/detail', [AuditTraceController::class, 'detail'])->name('audit-trace.detail');
+
+    Route::get('change-password', [AuthController::class, 'changePassword'])->name('change-password');
+    Route::post('change-password', [AuthController::class, 'saveNewPassword'])->name('save-new-password');
+});
