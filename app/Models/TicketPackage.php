@@ -12,6 +12,6 @@ class TicketPackage extends Model
 
     public function wahanas()
     {
-        return $this->belongsToMany(Wahana::class, 'ticket_package_wahanas');
+        return $this->belongsToMany(Wahana::class, 'ticket_package_wahanas')->withPivot('qty');
     }
 }

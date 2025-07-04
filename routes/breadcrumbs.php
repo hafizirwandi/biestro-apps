@@ -57,6 +57,27 @@ Breadcrumbs::for('wahana', function (BreadcrumbTrail $trail) {
     $trail->push('Wahana', route('wahana'));
 });
 
+Breadcrumbs::for('ticket', function (BreadcrumbTrail $trail) {
+    $trail->push('Ticket', route('ticket'));
+});
+Breadcrumbs::for('ticket-package', function (BreadcrumbTrail $trail) {
+    $trail->push('Ticket Package', route('ticket-package'));
+});
+
+Breadcrumbs::for('ticket-package.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('ticket-package');
+    $trail->push('Create', route('ticket-package.create'));
+});
+
+Breadcrumbs::for('ticket-package.edit', function (BreadcrumbTrail $trail, $id) {
+    $trail->parent('ticket-package');
+    $trail->push('Edit', route('ticket-package.edit', $id));
+});
+
+
+Breadcrumbs::for('transaction', function (BreadcrumbTrail $trail) {
+    $trail->push('Transaction', route('transaction'));
+});
 // // Home > Blog
 // Breadcrumbs::for('blog', function (BreadcrumbTrail $trail) {
 //     $trail->parent('home');

@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('ticket_package_wahanas', function (Blueprint $table) {
-            $table->id();
             $table->foreignId('ticket_package_id')->constrained()->onDelete('cascade');
             $table->foreignId('wahana_id')->nullable()->constrained()->onDelete('set null');
+            $table->unsignedBigInteger('qty')->default(1);
             $table->timestamps();
         });
     }

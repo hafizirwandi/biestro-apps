@@ -17,6 +17,10 @@ return new class extends Migration
             $table->enum('payment_status', ['pending', 'paid', 'failed'])->default('pending');
             $table->decimal('total_amount', 12, 2);
             $table->timestamp('paid_at')->nullable();
+            $table->string('payment_type')->nullable();
+            $table->decimal('amount_given', 12, 2)->nullable();
+            $table->string('noncash_method')->nullable();
+            $table->string('bank')->nullable();
             $table->timestamps();
         });
     }

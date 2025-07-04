@@ -64,23 +64,23 @@
                   </li>
               @endcan
 
-              @canany(['role-list', 'permission-list'])
-                  <li class="menu-item {{ isDropdown(['role*', 'permission*']) }}">
+              @canany(['ticket-list', 'ticket-package-list'])
+                  <li class="menu-item {{ isDropdown(['ticket', 'ticket-package*']) }}">
                       <a href="javascript:void(0);" class="menu-link menu-toggle">
                           <i class="menu-icon tf-icons ti ti-ticket"></i>
                           <div data-i18n="Ticket">Ticket</div>
                       </a>
                       <ul class="menu-sub">
-                          @can('role-list')
-                              <li class="menu-item {{ request()->routeIs('role*') ? 'active' : '' }}">
-                                  <a href="{{ route('role') }}" class="menu-link">
+                          @can('ticket-list')
+                              <li class="menu-item {{ request()->routeIs('ticket') ? 'active' : '' }}">
+                                  <a href="{{ route('ticket') }}" class="menu-link">
                                       <div data-i18n="Ticket">Ticket</div>
                                   </a>
                               </li>
                           @endcan
-                          @can('permission-list')
-                              <li class="menu-item {{ request()->routeIs('permission*') ? 'active' : '' }}">
-                                  <a href="{{ route('permission') }}" class="menu-link">
+                          @can('ticket-package-list')
+                              <li class="menu-item {{ request()->routeIs('ticket-package*') ? 'active' : '' }}">
+                                  <a href="{{ route('ticket-package') }}" class="menu-link">
                                       <div data-i18n="Ticket Package">Ticket Package</div>
                                   </a>
                               </li>
@@ -89,8 +89,8 @@
                   </li>
               @endcanany
               @can('setting')
-                  <li class="menu-item {{ request()->routeIs('setting*') ? 'active' : '' }}">
-                      <a href="{{ route('setting') }}" class="menu-link">
+                  <li class="menu-item {{ request()->routeIs('transaction') ? 'active' : '' }}">
+                      <a href="{{ route('transaction') }}" class="menu-link">
                           <i class="menu-icon tf-icons ti ti-shopping-bag"></i>
                           <div data-i18n="POS">POS</div>
                       </a>

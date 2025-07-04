@@ -3,58 +3,92 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\TicketPackage;
+use App\Models\TicketPackageWahana;
+use App\Models\Wahana;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TicketPackageController extends Controller
 {
     public function index()
     {
-        $data = Wahana::all();
-        return view('wahana.index', compact('data'));
+        $data = TicketPackage::all();
+        return view('ticket-package.index', compact('data'));
     }
     public function create()
     {
-        return view('wahana.create');
+        return view('ticket-package.create');
     }
     public function edit($id)
     {
-        $q = Wahana::findOrFail($id);
+        $q = TicketPackage::findOrFail($id);
+        $data['selectedWahanas'] = $q->wahanas->map(function ($item) {
+            return [
+                'wahana_id' => $item->id,
+                'qty' => $item->pivot->qty,
+            ];
+        });
+
+
         $data['data'] = $q;
 
-        return view('wahana.edit', $data);
+        return view('ticket-package.edit', $data);
     }
     public function saveOrUpdate(Request $request, $id = null)
     {
+        DB::beginTransaction();
         try {
             $rules = [
                 'name' => 'required',
                 'description' => 'nullable',
-                'key' => [
-                    'required',
-                    Rule::unique('wahanas', 'key')->ignore($id),
-                ],
+                'price' => 'required|numeric',
+                'is_active' => 'required|in:0,1',
+                'wahana_id' => 'required|array',
+                'wahana_id.*' => 'required|exists:wahanas,id',
+                'qty' => 'required|array',
+                'qty.*' => 'required|numeric|min:1',
             ];
-            if ($id != null) {
 
+            // Validasi
+            $data = $request->validate($rules);
 
-                $wahana = Wahana::findOrFail($id);
+            // Buat data tanpa wahana_id dan qty
+            $dataTicket = collect($data)->except(['wahana_id', 'qty'])->toArray();
 
-                $data = $request->validate($rules);
+            if ($id !== null) {
+                // Update
+                $ticketpackage = TicketPackage::findOrFail($id);
+                $ticketpackage->update($dataTicket);
 
+                // Hapus wahana sebelumnya
+                TicketPackageWahana::where('ticket_package_id', $ticketpackage->id)->delete();
 
-                $wahana->update($data);
-
-                $msg = 'Wahana updated successfully';
+                $msg = 'Ticket Package updated successfully';
             } else {
-
-                $data = $request->validate($rules);
-                $wahana = Wahana::create($data);
-                $msg = 'Wahana saved successfully';
+                // Create
+                $ticketpackage = TicketPackage::create($dataTicket);
+                $msg = 'Ticket Package saved successfully';
             }
+
+            // Simpan wahana baru
+            for ($i = 0; $i < count($data['wahana_id']); $i++) {
+                $dataTicketWahana = [
+                    'ticket_package_id' => $ticketpackage->id,
+                    'wahana_id' => $data['wahana_id'][$i],
+                    'qty' => $data['qty'][$i],
+                ];
+                TicketPackageWahana::create($dataTicketWahana); // ← ini yg benar
+            }
+
+            DB::commit();
             return back()->with('success', $msg);
         } catch (ValidationException $e) {
-            return back()->with('error', $e->errors());
+            DB::rollback();
+            return back()->withErrors($e->validator)->withInput();
         } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
+            DB::rollback();
+            return back()->with('error', $e->getMessage())->withInput();
         }
     }
 
@@ -62,8 +96,8 @@ class TicketPackageController extends Controller
     public function destroy(Request $request)
     {
         try {
-            Wahana::destroy($request->input('id'));
-            return back()->with('success', 'Wahana deleted successfully');
+            TicketPackage::destroy($request->input('id'));
+            return back()->with('success', 'Ticket Package deleted successfully');
         } catch (\Exception $e) {
 
             return back()->with('error', $e->getMessage());

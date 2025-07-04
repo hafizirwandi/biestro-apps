@@ -24,18 +24,15 @@ if (!function_exists('statusUser')) {
         }
     }
 }
-if (!function_exists('statusIsRandomSoal')) {
-    function statusIsRandomSoal($status)
+
+if (!function_exists('isActive')) {
+    function isActive($status)
     {
         switch ($status) {
             case 1:
                 return '<span class="badge bg-label-success" text-capitalized="">Active</span>';
-
             case 0:
-                return '<span class="badge bg-label-secondary" text-capitalized="">Pending</span>';
-
-
-
+                return '<span class="badge bg-label-danger" text-capitalized="">Not Active</span>';
             default:
                 return '';
         }
@@ -88,28 +85,6 @@ if (!function_exists('uploadAndReadExcel')) {
     }
 }
 
-if (!function_exists('getTokenApi')) {
-    function getTokenApi()
-    {
-
-        if (!session('api_token')) {
-            $response = Http::post(env('URL_API') . 'login', [
-                'username' => 'admin',
-                'password' => 'admin',
-            ]);
-            if ($response->successful()) {
-                $token = $response->json()['data']['token'];
-                session(['api_token' => $token]);
-                return $token;
-            } else {
-
-                return null;
-            }
-        } else {
-            return session('api_token');
-        }
-    }
-}
 
 if (!function_exists('encryptText')) {
     function encryptText($plainText, $key)
@@ -170,7 +145,16 @@ if (!function_exists('sanitizeErrorMessage')) {
     }
 }
 
+if (!function_exists('format_rupiah')) {
+    function format_rupiah($angka, $prefix = 'Rp ')
+    {
+        if (!is_numeric($angka)) {
+            return $prefix . '0';
+        }
 
+        return $prefix . number_format($angka, 0, ',', '.');
+    }
+}
 function setting_field()
 {
     return [

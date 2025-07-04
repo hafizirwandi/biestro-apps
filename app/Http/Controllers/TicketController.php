@@ -2,53 +2,52 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Ticket;
+use App\Models\Wahana;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class TicketController extends Controller
 {
     public function index()
     {
-        $data = Wahana::all();
-        return view('wahana.index', compact('data'));
+        $data = Ticket::all();
+        return view('ticket.index', compact('data'));
     }
     public function create()
     {
-        return view('wahana.create');
+        $wahana = Wahana::all();
+        return view('ticket.create', compact('wahana'));
     }
     public function edit($id)
     {
-        $q = Wahana::findOrFail($id);
+        $data['wahana'] = Wahana::all();
+        $q = Ticket::findOrFail($id);
         $data['data'] = $q;
 
-        return view('wahana.edit', $data);
+        return view('ticket.edit', $data);
     }
     public function saveOrUpdate(Request $request, $id = null)
     {
+        // dd($request->input());
         try {
             $rules = [
-                'name' => 'required',
-                'description' => 'nullable',
-                'key' => [
-                    'required',
-                    Rule::unique('wahanas', 'key')->ignore($id),
-                ],
+                'wahana_id' => 'required|exists:wahanas,id',
+                'name' => 'required|string',
+                'price' => 'required|numeric',
+                'is_active' => 'required|in:1,0',
             ];
             if ($id != null) {
-
-
-                $wahana = Wahana::findOrFail($id);
-
+                $ticket = Ticket::findOrFail($id);
                 $data = $request->validate($rules);
+                $ticket->update($data);
 
-
-                $wahana->update($data);
-
-                $msg = 'Wahana updated successfully';
+                $msg = 'Ticket updated successfully';
             } else {
 
                 $data = $request->validate($rules);
-                $wahana = Wahana::create($data);
-                $msg = 'Wahana saved successfully';
+                $ticket = Ticket::create($data);
+                $msg = 'Ticket saved successfully';
             }
             return back()->with('success', $msg);
         } catch (ValidationException $e) {
@@ -62,8 +61,8 @@ class TicketController extends Controller
     public function destroy(Request $request)
     {
         try {
-            Wahana::destroy($request->input('id'));
-            return back()->with('success', 'Wahana deleted successfully');
+            Ticket::destroy($request->input('id'));
+            return back()->with('success', 'Ticket deleted successfully');
         } catch (\Exception $e) {
 
             return back()->with('error', $e->getMessage());

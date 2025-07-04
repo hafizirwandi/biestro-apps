@@ -16,6 +16,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\FileManagerController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketPackageController;
+use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\WahanaController;
 
 /*
@@ -76,16 +77,17 @@ Route::middleware('auth:web')->group(function () {
         Route::post('/', [WahanaController::class, 'saveOrUpdate'])->name('wahana.store')->middleware('can:wahana-create');
         Route::put('/{id}', [WahanaController::class, 'saveOrUpdate'])->name('wahana.update')->middleware('can:wahana-edit');
         Route::delete('/delete', [WahanaController::class, 'destroy'])->name('wahana.destroy')->middleware('can:wahana-delete');
+        Route::get('/get-data', [WahanaController::class, 'getData'])->name('wahana.get-data')->middleware('can:wahana-list');
     });
 
 
-    Route::prefix('tickect')->group(function () {
-        Route::get('/', [TicketController::class, 'index'])->name('tickect')->middleware('can:tickect-list');
-        Route::get('/create', [TicketController::class, 'create'])->name('tickect.create')->middleware('can:tickect-create');
-        Route::get('/edit/{id}', [TicketController::class, 'edit'])->name('tickect.edit')->middleware('can:tickect-edit');
-        Route::post('/', [TicketController::class, 'saveOrUpdate'])->name('tickect.store')->middleware('can:tickect-create');
-        Route::put('/{id}', [TicketController::class, 'saveOrUpdate'])->name('tickect.update')->middleware('can:tickect-edit');
-        Route::delete('/delete', [TicketController::class, 'destroy'])->name('tickect.destroy')->middleware('can:tickect-delete');
+    Route::prefix('ticket')->group(function () {
+        Route::get('/', [TicketController::class, 'index'])->name('ticket')->middleware('can:ticket-list');
+        Route::get('/create', [TicketController::class, 'create'])->name('ticket.create')->middleware('can:ticket-create');
+        Route::get('/edit/{id}', [TicketController::class, 'edit'])->name('ticket.edit')->middleware('can:ticket-edit');
+        Route::post('/', [TicketController::class, 'saveOrUpdate'])->name('ticket.store')->middleware('can:ticket-create');
+        Route::put('/{id}', [TicketController::class, 'saveOrUpdate'])->name('ticket.update')->middleware('can:ticket-edit');
+        Route::delete('/delete', [TicketController::class, 'destroy'])->name('ticket.destroy')->middleware('can:ticket-delete');
     });
 
     Route::prefix('ticket-package')->group(function () {
@@ -97,8 +99,10 @@ Route::middleware('auth:web')->group(function () {
         Route::delete('/delete', [TicketPackageController::class, 'destroy'])->name('ticket-package.destroy')->middleware('can:ticket-package-delete');
     });
 
-
-
+    Route::prefix('transaction')->group(function () {
+        Route::get('/', [TransactionController::class, 'index'])->name('transaction');
+        Route::post('/store', [TransactionController::class, 'store'])->name('transaction.store');
+    });
 
     Route::prefix('laravel-filemanager')->group(function () {
         Lfm::routes();

@@ -72,4 +72,13 @@ class WahanaController extends Controller
             return back()->with('error', $e->getMessage());
         }
     }
+    public function getData()
+    {
+        $data = Wahana::all();
+        return response()->json([
+            'success' => true,
+            'message' => 'Data wahana berhasil diambil.',
+            'data' => $data
+        ], 200);
+    }
 }

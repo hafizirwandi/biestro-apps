@@ -33,8 +33,31 @@
          });
      }
  </script>
+
  <script>
      $(document).ready(function() {
+         $('.auto-numeric').each(function() {
+             if (!AutoNumeric.getAutoNumericElement(this)) {
+                 new AutoNumeric(this, {
+                     digitGroupSeparator: ',',
+                     decimalPlaces: 0,
+                     currencySymbol: 'Rp. ',
+                     unformatOnSubmit: true
+                 });
+             }
+         });
+         $('#myModal').on('shown.bs.modal', function() {
+             $('.auto-numeric').each(function() {
+                 if (!AutoNumeric.getAutoNumericElement(this)) {
+                     new AutoNumeric(this, {
+                         digitGroupSeparator: ',',
+                         decimalPlaces: 0,
+                         currencySymbol: 'Rp. ',
+                         unformatOnSubmit: true
+                     });
+                 }
+             });
+         });
          $(".select2").select2();
          $(".datatable").DataTable({
 
