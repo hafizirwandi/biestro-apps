@@ -78,6 +78,11 @@ Breadcrumbs::for('ticket-package.edit', function (BreadcrumbTrail $trail, $id) {
 Breadcrumbs::for('transaction', function (BreadcrumbTrail $trail) {
     $trail->push('Transaction', route('transaction'));
 });
+
+
+Breadcrumbs::for('report.transaction', function (BreadcrumbTrail $trail) {
+    $trail->push('Report', route('report.transaction'));
+});
 // // Home > Blog
 // Breadcrumbs::for('blog', function (BreadcrumbTrail $trail) {
 //     $trail->parent('home');

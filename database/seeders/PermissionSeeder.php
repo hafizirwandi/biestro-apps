@@ -36,9 +36,11 @@ class PermissionSeeder extends Seeder
         'ticket-package-edit',
         'ticket-package-delete',
         'ticket-package-create',
+        'report-transaction',
         'setting',
         'filemanager-view',
-        'audit-trace'
+        'audit-trace',
+        'report-transaction'
     ];
     public function run(): void
     {

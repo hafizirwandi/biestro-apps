@@ -11,11 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('settings', function (Blueprint $table) {
+        Schema::create('daily_ticket_sequences', function (Blueprint $table) {
             $table->id();
-            $table->string('key');
-            $table->string('value')->nullable();
+            $table->unsignedBigInteger('wahana_id');
+            $table->date('date');
+            $table->integer('last_number')->default(0);
             $table->timestamps();
+
+            $table->unique(['wahana_id', 'date']); // kombinasi unik
+
         });
     }
 
@@ -24,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('settings');
+        Schema::dropIfExists('daily_ticket_sequences');
     }
 };

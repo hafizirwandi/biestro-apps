@@ -96,27 +96,21 @@
                       </a>
                   </li>
               @endcan
-              @canany(['role-list', 'permission-list'])
-                  <li class="menu-item {{ isDropdown(['role*', 'permission*']) }}">
+              @canany(['report-transaction'])
+                  <li class="menu-item {{ isDropdown(['report*']) }}">
                       <a href="javascript:void(0);" class="menu-link menu-toggle">
                           <i class="menu-icon tf-icons ti ti-report"></i>
                           <div data-i18n="Report">Report</div>
                       </a>
                       <ul class="menu-sub">
                           @can('role-list')
-                              <li class="menu-item {{ request()->routeIs('role*') ? 'active' : '' }}">
-                                  <a href="{{ route('role') }}" class="menu-link">
-                                      <div data-i18n="Ticket">Ticket</div>
+                              <li class="menu-item {{ request()->routeIs('report.transaction') ? 'active' : '' }}">
+                                  <a href="{{ route('report.transaction') }}" class="menu-link">
+                                      <div data-i18n="Transaction">Transaction</div>
                                   </a>
                               </li>
                           @endcan
-                          @can('permission-list')
-                              <li class="menu-item {{ request()->routeIs('permission*') ? 'active' : '' }}">
-                                  <a href="{{ route('permission') }}" class="menu-link">
-                                      <div data-i18n="Ticket Package">Ticket Package</div>
-                                  </a>
-                              </li>
-                          @endcan
+
                       </ul>
                   </li>
               @endcanany

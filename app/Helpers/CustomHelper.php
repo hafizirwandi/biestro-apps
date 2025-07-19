@@ -179,6 +179,84 @@ function setting_field()
             'open_fm' => true,
             'mod' => 'setting',
         ],
+        [
+            'label' => 'Connector Type',
+            'type' => 'select',
+            'options' => array(
+                'windows' => 'Windows',
+                'cups' => 'Mac and Linux',
+                'netword' => 'Network'
+            ),
+            'name' => 'connector_type',
+            'mod' => 'printer configuration',
+        ],
+        [
+            'label' => 'Connector Descriptor',
+            'type' => 'text',
+            'name' => 'connector_descriptor',
+            'mod' => 'printer configuration',
+        ],
+        [
+            'label' => 'Header Receipt',
+            'type' => 'text',
+            'name' => 'header_receipt',
+            'mod' => 'component receipt',
+        ],
+        [
+            'label' => 'Sub Header Receipt',
+            'type' => 'text',
+            'name' => 'subheader_receipt',
+            'mod' => 'component receipt',
+        ],
+        [
+            'label' => 'Company Logo Receipt',
+            'type' => 'text',
+            'open_fm' => true,
+            'name' => 'company_logo_receipt',
+            'mod' => 'component receipt',
+        ],
+        [
+            'label' => 'Footer Receipt',
+            'type' => 'text',
+            'name' => 'footer_receipt',
+            'mod' => 'component receipt',
+        ],
+
+        [
+            'label' => 'Header Ticket',
+            'type' => 'text',
+            'name' => 'header_ticket',
+            'mod' => 'component ticket',
+        ],
+        [
+            'label' => 'Sub Header Ticket',
+            'type' => 'text',
+            'name' => 'subheader_ticket',
+            'mod' => 'component ticket',
+        ],
+        [
+            'label' => 'Company Logo Ticket',
+            'type' => 'text',
+            'open_fm' => true,
+            'name' => 'company_logo_ticket',
+            'mod' => 'component ticket',
+        ],
+        [
+            'label' => 'Footer Ticket',
+            'type' => 'text',
+            'name' => 'footer_ticket',
+            'mod' => 'component ticket',
+        ],
+        [
+            'label' => 'Show Barcode',
+            'type' => 'select',
+            'options' => array(
+                '1' => 'Ya',
+                '0' => 'No',
+            ),
+            'name' => 'show_barcode',
+            'mod' => 'component ticket',
+        ],
 
 
     ];

@@ -32,7 +32,7 @@
                                  @elseif($r['type'] == 'textarea')
                                      <textarea name="{{ $r['name'] }}" class="form-control" placeholder="Enter Text">{{ old($r['name'], $settings[$r['name']] ?? '') }}</textarea>
                                  @elseif($r['type'] == 'select')
-                                     <select name="{{ $r['name'] }}" class="form-control" placeholder="Enter Text">
+                                     <select name="{{ $r['name'] }}" class="form-select" placeholder="Enter Text">
                                          @foreach ($r['options'] as $key => $value)
                                              <option value="{{ $key }}"
                                                  {{ old($r['name'], $settings[$r['name']] ?? '') == $key ? 'selected' : '' }}>

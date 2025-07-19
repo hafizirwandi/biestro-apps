@@ -14,6 +14,7 @@ use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\AuditTraceController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\FileManagerController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketPackageController;
 use App\Http\Controllers\TransactionController;
@@ -102,6 +103,15 @@ Route::middleware('auth:web')->group(function () {
     Route::prefix('transaction')->group(function () {
         Route::get('/', [TransactionController::class, 'index'])->name('transaction');
         Route::post('/store', [TransactionController::class, 'store'])->name('transaction.store');
+        Route::get('/view/{id}', [TransactionController::class, 'view'])->name('transaction.view');
+        Route::post('/print-bill', [TransactionController::class, 'printBill'])->name('transaction.print-bill');
+        Route::post('/print-ticket', [TransactionController::class, 'printTicket'])->name('transaction.print-ticket');
+        Route::post('/print-ticket-all', [TransactionController::class, 'printTicketAll'])->name('transaction.print-ticket-all');
+    });
+
+    Route::prefix('report')->group(function () {
+        Route::get('/transaction', [ReportController::class, 'transaction'])->name('report.transaction');
+        Route::get('/detail-transaction-modal/{id}', [ReportController::class, 'detailTransactionModal'])->name('report.detail-transaction-modal');
     });
 
     Route::prefix('laravel-filemanager')->group(function () {
