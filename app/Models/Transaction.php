@@ -8,11 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 class Transaction extends Model
 {
     use HasFactory;
-    protected $fillable = ['visitor_id', 'transaction_code', 'payment_status', 'total_amount', 'paid_at', 'payment_type', 'amount_given', 'bank', 'noncash_method'];
+    protected $fillable = ['visitor_id', 'transaction_code', 'payment_status', 'total_amount', 'paid_at', 'payment_type', 'amount_given', 'bank', 'noncash_method', 'user_id', 'cashier_shift_id'];
 
 
     public function details()
     {
         return $this->hasMany(TransactionDetail::class);
+    }
+
+    public function freeGifts()
+    {
+        return $this->hasMany(TransactionFreeGift::class);
     }
 }

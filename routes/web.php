@@ -12,8 +12,10 @@ use App\Http\Controllers\SurveyController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\AuditTraceController;
+use App\Http\Controllers\CounterController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\FileManagerController;
+use App\Http\Controllers\FreeGiftRuleController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketPackageController;
@@ -82,6 +84,16 @@ Route::middleware('auth:web')->group(function () {
     });
 
 
+    Route::prefix('counter')->group(function () {
+        Route::get('/', [CounterController::class, 'index'])->name('counter')->middleware('can:counter-list');
+        Route::get('/create', [CounterController::class, 'create'])->name('counter.create')->middleware('can:counter-create');
+        Route::get('/edit/{id}', [CounterController::class, 'edit'])->name('counter.edit')->middleware('can:counter-edit');
+        Route::post('/', [CounterController::class, 'saveOrUpdate'])->name('counter.store')->middleware('can:counter-create');
+        Route::put('/{id}', [CounterController::class, 'saveOrUpdate'])->name('counter.update')->middleware('can:counter-edit');
+        Route::delete('/delete', [CounterController::class, 'destroy'])->name('counter.destroy')->middleware('can:counter-delete');
+    });
+
+
     Route::prefix('ticket')->group(function () {
         Route::get('/', [TicketController::class, 'index'])->name('ticket')->middleware('can:ticket-list');
         Route::get('/create', [TicketController::class, 'create'])->name('ticket.create')->middleware('can:ticket-create');
@@ -100,13 +112,34 @@ Route::middleware('auth:web')->group(function () {
         Route::delete('/delete', [TicketPackageController::class, 'destroy'])->name('ticket-package.destroy')->middleware('can:ticket-package-delete');
     });
 
-    Route::prefix('transaction')->group(function () {
+
+    Route::prefix('free-gift')->group(function () {
+        Route::get('/', [FreeGiftRuleController::class, 'index'])->name('free-gift')->middleware('can:free-gift-list');
+        Route::get('/create', [FreeGiftRuleController::class, 'create'])->name('free-gift.create')->middleware('can:free-gift-create');
+        Route::get('/edit/{id}', [FreeGiftRuleController::class, 'edit'])->name('free-gift.edit')->middleware('can:free-gift-edit');
+        Route::post('/', [FreeGiftRuleController::class, 'saveOrUpdate'])->name('free-gift.store')->middleware('can:free-gift-create');
+        Route::put('/{id}', [FreeGiftRuleController::class, 'saveOrUpdate'])->name('free-gift.update')->middleware('can:free-gift-edit');
+        Route::delete('/delete', [FreeGiftRuleController::class, 'destroy'])->name('free-gift.destroy')->middleware('can:free-gift-delete');
+    });
+
+    Route::prefix('transaction')->middleware('can:pos')->group(function () {
         Route::get('/', [TransactionController::class, 'index'])->name('transaction');
         Route::post('/store', [TransactionController::class, 'store'])->name('transaction.store');
         Route::get('/view/{id}', [TransactionController::class, 'view'])->name('transaction.view');
         Route::post('/print-bill', [TransactionController::class, 'printBill'])->name('transaction.print-bill');
         Route::post('/print-ticket', [TransactionController::class, 'printTicket'])->name('transaction.print-ticket');
         Route::post('/print-ticket-all', [TransactionController::class, 'printTicketAll'])->name('transaction.print-ticket-all');
+        Route::get('/get-detail/{id}', [TransactionController::class, 'getDetail'])->name('transaction.get-detail');
+        Route::get('/check-free/{id}', [TransactionController::class, 'checkFree'])->name('transaction.check-free');
+        Route::get('/open-shift', [TransactionController::class, 'openShift'])->name('transaction.open-shift');
+        Route::get('/close-shift', [TransactionController::class, 'closeShift'])->name('transaction.close-shift');
+        Route::get('/sales-revenue', [TransactionController::class, 'salesRevenue'])->name('transaction.sales-revenue');
+        Route::get('/reprint-receipt', [TransactionController::class, 'reprintReceipt'])->name('transaction.reprint-receipt');
+        Route::get('/close', [TransactionController::class, 'close'])->name('transaction.close');
+
+        Route::post('/set-open-shift', [TransactionController::class, 'setOpenShift'])->name('transaction.set-open-shift');
+        Route::post('/set-open-shift', [TransactionController::class, 'setOpenShift'])->name('transaction.set-open-shift');
+        Route::post('/set-close-shift', [TransactionController::class, 'setCloseShift'])->name('transaction.set-close-shift');
     });
 
     Route::prefix('report')->group(function () {

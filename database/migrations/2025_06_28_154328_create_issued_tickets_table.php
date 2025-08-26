@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('issued_tickets', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('transaction_detail_id')->constrained()->onDelete('cascade');
+            $table->foreignId('transaction_detail_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('ticket_id')->nullable()->constrained('tickets')->onDelete('set null');
             $table->foreignId('ticket_package_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('wahana_id')->nullable()->constrained('wahanas')->onDelete('set null');

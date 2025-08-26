@@ -88,11 +88,27 @@
                       </ul>
                   </li>
               @endcanany
-              @can('setting')
+              @can('counter-list')
+                  <li class="menu-item {{ request()->routeIs('counter') ? 'active' : '' }}">
+                      <a href="{{ route('counter') }}" class="menu-link">
+                          <i class="menu-icon tf-icons ti ti-archive"></i>
+                          <div data-i18n="Counter">Counter</div>
+                      </a>
+                  </li>
+              @endcan
+              @can('pos')
                   <li class="menu-item {{ request()->routeIs('transaction') ? 'active' : '' }}">
                       <a href="{{ route('transaction') }}" class="menu-link">
                           <i class="menu-icon tf-icons ti ti-shopping-bag"></i>
                           <div data-i18n="POS">POS</div>
+                      </a>
+                  </li>
+              @endcan
+              @can('free-gift-list')
+                  <li class="menu-item {{ request()->routeIs('free-gift') ? 'active' : '' }}">
+                      <a href="{{ route('free-gift') }}" class="menu-link">
+                          <i class="menu-icon tf-icons ti ti-gift"></i>
+                          <div data-i18n="Free Gift">Free Gift</div>
                       </a>
                   </li>
               @endcan

@@ -46,9 +46,18 @@
              opacity: 0.5;
              color: gray;
          }
+
+         .underline {
+             text-decoration: underline !important;
+         }
      </style>
  @endsection
  @section('content')
+     <div class="row mb-5">
+         <div class="col-md-12">
+             <a class="btn btn-primary" href="{{ route('transaction') }}">Back</a>
+         </div>
+     </div>
      <div class="row justify-content-center">
          <div class="col-md-12">
              <div class="title-order ">
@@ -74,7 +83,7 @@
                              <div class="flex-grow-1">
                                  <div class="fw-bold">
                                      {{ $r->ticket_id != null ? $r->ticket->name : $r->ticketPackage->name }}</div>
-                                 <div class="text-muted small">{{ $r->quantity }}</div>
+                                 <div class="text-muted small">x{{ $r->quantity }}</div>
                              </div>
                              <div class="text-end">
                                  <div class="fw-bold">{{ format_rupiah($r->subtotal) }}</div>
@@ -83,6 +92,34 @@
                          </div>
                      @endforeach
                  </div>
+
+                 @foreach ($data->freeGifts as $r)
+                     <div class="mt-3 px-3 fw-bold underline">Free Voucher {{ $r->freeGiftRule?->name }}
+                         x{{ $r->quantity }}
+                     </div>
+
+                     @php
+                         $wahanas = $r->freeGiftRule?->wahanas;
+
+                     @endphp
+                     @foreach ($wahanas as $w)
+                         <div class="cart-list px-3">
+                             <div
+                                 class="cart-item d-flex justify-content-between align-items-center flex-wrap py-2 border-bottom order-item ">
+                                 <div class="flex-grow-1">
+                                     <div class="fw-bold">{{ $w->name }}</div>
+                                     <div class="text-muted small">{{ '@' . $w->pivot->qty }} x {{ $r->quantity }} =
+                                         {{ $w->pivot->qty * $r->quantity }}</div>
+                                 </div>
+                                 <div class="text-end">
+                                     <div class="fw-bold">Free</div>
+                                 </div>
+
+                             </div>
+
+                         </div>
+                     @endforeach
+                 @endforeach
 
              </div>
              <div class="shadow-sm p-2 py-3 mt-3 rounded ">
@@ -98,19 +135,25 @@
              <div class="shadow-sm border-top border-primary rounded-top border-5 card-order">
                  <div class="cart-list mt-3 px-3">
 
+                     @php
+                         $totalPrint = $ticket->where('count_print', 0)->count();
+                     @endphp
                      @foreach ($ticket as $r)
                          <div class="cart-item d-flex justify-content-between align-items-center flex-wrap py-2 border-bottom order-item "
                              data-id="{{ $r->id }}">
                              <div class="flex-grow-1">
-                                 <div class="fw-bold {{ $r->is_used ? 'ticket-used' : '' }}"> {{ $r->ticket_code }} </div>
-                                 <div class="text-muted small {{ $r->is_used ? 'ticket-used' : '' }}">
+                                 <div class="fw-bold {{ $r->count_print != 0 ? 'ticket-used' : '' }}">
+                                     {{ $r->ticket_code }}
+                                 </div>
+                                 <div class="text-muted small {{ $r->count_print != 0 ? 'ticket-used' : '' }}">
                                      {{ $r->wahana->name }}
                                  </div>
                              </div>
 
                              <div>
                                  <a href="javascript:;" onclick="printTicket(`{{ $r->id }}`)"
-                                     class="ms-3 btn-remove-order{{ $r->is_used ? 'ticket-used' : '' }} ">
+                                     class="ms-3 btn-remove-order {{ $r->count_print != 0 ? 'ticket-used' : '' }} "
+                                     {{ $r->count_print != 0 ? 'aria-disabled="true" onclick="return false;"' : '' }}>
                                      <i class="ti ti-printer ti-sm"></i>
                                  </a>
                              </div>
@@ -121,11 +164,12 @@
              </div>
              <div class="shadow-sm p-2 py-3 mt-3 rounded ">
                  <div class="d-flex justify-content-between">
-                     <strong>TOTAL TIKCET</strong>
+                     <strong>TOTAL TICKET</strong>
                      <span class="fw-bold">{{ count($ticket) }}</span>
                  </div>
              </div>
-             <button onclick="printTicketAll(`{{ $data->id }}`)" class="btn btn-primary w-100 mt-3">Print
+             <button onclick="printTicketAll(`{{ $data->id }}`)" class="btn btn-primary w-100 mt-3"
+                 {{ $totalPrint === 0 ? 'disabled' : '' }}>Print
                  Ticket</button>
          </div>
      </div>
@@ -163,6 +207,7 @@
                      id: id
                  },
                  success: function(res) {
+
                      if (res.status == 'success') {
                          alert('Ticket berhasil dicetak!');
                      } else {

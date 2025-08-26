@@ -60,6 +60,7 @@ Breadcrumbs::for('wahana', function (BreadcrumbTrail $trail) {
 Breadcrumbs::for('ticket', function (BreadcrumbTrail $trail) {
     $trail->push('Ticket', route('ticket'));
 });
+
 Breadcrumbs::for('ticket-package', function (BreadcrumbTrail $trail) {
     $trail->push('Ticket Package', route('ticket-package'));
 });
@@ -75,6 +76,21 @@ Breadcrumbs::for('ticket-package.edit', function (BreadcrumbTrail $trail, $id) {
 });
 
 
+Breadcrumbs::for('free-gift', function (BreadcrumbTrail $trail) {
+    $trail->push('Free Gift Rule', route('free-gift'));
+});
+
+Breadcrumbs::for('free-gift.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('free-gift');
+    $trail->push('Create', route('free-gift.create'));
+});
+
+Breadcrumbs::for('free-gift.edit', function (BreadcrumbTrail $trail, $id) {
+    $trail->parent('free-gift');
+    $trail->push('Edit', route('free-gift.edit', $id));
+});
+
+
 Breadcrumbs::for('transaction', function (BreadcrumbTrail $trail) {
     $trail->push('Transaction', route('transaction'));
 });
@@ -82,6 +98,10 @@ Breadcrumbs::for('transaction', function (BreadcrumbTrail $trail) {
 
 Breadcrumbs::for('report.transaction', function (BreadcrumbTrail $trail) {
     $trail->push('Report', route('report.transaction'));
+});
+
+Breadcrumbs::for('counter', function (BreadcrumbTrail $trail) {
+    $trail->push('Counter', route('counter'));
 });
 // // Home > Blog
 // Breadcrumbs::for('blog', function (BreadcrumbTrail $trail) {

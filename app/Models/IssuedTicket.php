@@ -17,8 +17,13 @@ class IssuedTicket extends Model
         'wahana_id',
         'is_used',
         'used_at',
-        'ticket_code'
+        'ticket_code',
+        'free_gift_rule_id',
+        'transaction_id',
+        'count_print',
+        'last_printed_at'
     ];
+
     public function wahana()
     {
         return $this->belongsTo(Wahana::class);

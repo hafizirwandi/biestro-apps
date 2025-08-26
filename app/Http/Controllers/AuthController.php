@@ -29,13 +29,17 @@ class AuthController extends Controller
             // Periksa status pengguna
             $user = Auth::user();
             if ($user->status == 1) {
-                return redirect()->intended('/home');
+
+                if ($user->hasRole('cashier')) {
+                    return redirect()->intended('/transaction');
+                } else {
+                    return redirect()->intended('/home');
+                }
             } else {
                 Auth::logout(); // Logout jika status pengguna bukan 1
                 return redirect()->back()->withErrors(['username' => 'Your account is not active']);
             }
         }
-
         return redirect()->back()->withInput()->withErrors(['username' => 'Invalid username or password']);
     }
 

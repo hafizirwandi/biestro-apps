@@ -38,6 +38,20 @@ if (!function_exists('isActive')) {
         }
     }
 }
+
+if (!function_exists('isMultiple')) {
+    function isMultiple($status)
+    {
+        switch ($status) {
+            case 1:
+                return '<span class="badge bg-label-success" text-capitalized="">Multiple</span>';
+            case 0:
+                return '<span class="badge bg-label-danger" text-capitalized="">Not Multiple</span>';
+            default:
+                return '';
+        }
+    }
+}
 if (!function_exists('statusGeneral')) {
     function statusGeneral($status)
     {
