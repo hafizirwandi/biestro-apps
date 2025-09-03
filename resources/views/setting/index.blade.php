@@ -29,6 +29,10 @@
                                      <input type="{{ $r['type'] }}" name="{{ $r['name'] }}" class="form-control"
                                          placeholder="Enter Text"
                                          value="{{ old($r['name'], $settings[$r['name']] ?? '') }}" />
+                                 @elseif ($r['type'] == 'password')
+                                     <input type="{{ $r['type'] }}" name="{{ $r['name'] }}" class="form-control"
+                                         placeholder="Enter Text"
+                                         value="{{ old($r['name'], $settings[$r['name']] ?? '') }}" />
                                  @elseif($r['type'] == 'textarea')
                                      <textarea name="{{ $r['name'] }}" class="form-control" placeholder="Enter Text">{{ old($r['name'], $settings[$r['name']] ?? '') }}</textarea>
                                  @elseif($r['type'] == 'select')

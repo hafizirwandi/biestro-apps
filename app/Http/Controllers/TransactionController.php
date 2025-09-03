@@ -328,13 +328,14 @@ class TransactionController extends Controller
 
             // Init printer
             $printer = new CustomReceiptPrinter;
+            // dd(setting());
 
             $connected = $printer->init(setting('connector_type'), setting('connector_descriptor'));
 
             // ✅ cek apakah berhasil konek
-            if ($connected === false || $connected === null) {
-                throw new \Exception("Printer tidak tersambung atau mati.");
-            }
+            // if ($connected === false || $connected === null) {
+            //     throw new \Exception("Printer tidak tersambung atau mati.");
+            // }
 
             $printer->printBill($transaction->details, $transaction->total_amount);
 
@@ -378,16 +379,17 @@ class TransactionController extends Controller
     public function printTicketAll(Request $request)
     {
         try {
-            $data = Transaction::where('payment_status', 'paid')->where('id', $request->transaction_id)->first();
-            $detailIds = $data->details->pluck('id'); // Ambil semua ID dari details
-            $tickets = IssuedTicket::whereIn('transaction_detail_id', $detailIds)->get();
+            // $data = Transaction::where('payment_status', 'paid')->where('id', $request->transaction_id)->first();
+            // $detailIds = $data->details->pluck('id'); // Ambil semua ID dari details
+            // $tickets = IssuedTicket::whereIn('transaction_detail_id', $detailIds)->get();
+            $tickets = IssuedTicket::where('transaction_id', $request->transaction_id)->get();
             // Init printer
             $printer = new CustomReceiptPrinter;
             $connected = $printer->init(setting('connector_type'), setting('connector_descriptor'));
 
-            if ($connected === false || $connected === null) {
-                // throw new \Exception("Printer tidak tersambung atau mati.");
-            }
+            // if ($connected === false || $connected === null) {
+            //     throw new \Exception("Printer tidak tersambung atau mati.");
+            // }
 
             $printer->printTicketAll($tickets);
 
@@ -490,10 +492,11 @@ class TransactionController extends Controller
                 $sequence->save();
             }
 
-            $random = strtoupper(Str::random(10)); // 10 huruf random
+            $random1 = strtoupper(Str::random(4));
+            $random2 = strtoupper(Str::random(4));
             $number = str_pad($sequence->last_number, 4, '0', STR_PAD_LEFT);
 
-            return "BIE-{$random}-{$number}";
+            return "BIE-{$random1}{$number}{$random2}";
         });
     }
 
@@ -627,6 +630,67 @@ class TransactionController extends Controller
 
         return view('transaction.close');
     }
+
+    public function reprintReceipt()
+    {
+        $shiftId = session('cashier_shift_id');
+        $shift = CashierShift::find($shiftId);
+        $transaction = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get();
+        return view('transaction.reprint-receipt', compact('transaction', 'shift'));
+    }
+    public function reprint(Request $request)
+    {
+        try {
+            $rules = [
+                'id' => 'required|exists:transactions,id',
+                'spv_code' => 'required',
+            ];
+
+            $spv_code = setting('spv_approve');
+            $data = $request->validate($rules);
+
+            if ($spv_code !== $data['spv_code']) {
+                throw new \Exception('Password SPV wrong!');
+            }
+
+            // reset count_print semua tiket dari transaksi terkait
+            IssuedTicket::where('transaction_id', $data['id'])
+                ->update(['count_print' => 0]);
+
+            return back()->with('success', 'Tickets berhasil di-reset dan siap di reprint');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+    public function deleteDraftTransaction($id)
+    {
+        try {
+            $data = Transaction::where('id', $id)
+                ->where('payment_status', 'pending')
+                ->first();
+
+            if (!$data) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Data not found!',
+                ], 404); // pakai 404
+            }
+
+            $data->delete();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Data deleted successfully',
+            ], 200); // pakai 200
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+            ], 500); // ini oke untuk error tak terduga
+        }
+    }
+
+
     // public function printUsb(Request $request)
     // {
     //     $sale_id = $request->input('sale_id');

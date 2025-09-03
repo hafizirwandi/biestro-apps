@@ -5,7 +5,6 @@
          <div class="col-md-12">
              <a class="btn btn-primary" href="{{ route('transaction') }}">Back</a>
              <a class="btn btn-danger" href="{{ route('transaction.close-shift') }}">Cashier Closing</a>
-             <a class="btn btn-success" href="{{ route('transaction.close-shift') }}">Dashboard Analytic</a>
          </div>
      </div>
 
@@ -37,6 +36,7 @@
                                  <th>Non Cash Method</th>
                                  <th>Bank</th>
                                  <th>Paid At</th>
+                                 <th>Action</th>
                              </tr>
                          </thead>
                          <tbody>
@@ -56,6 +56,8 @@
                                      <td>{{ $r->noncash_method }}</td>
                                      <td>{{ $r->bank }}</td>
                                      <td>{{ $r->paid_at }}</td>
+                                     <td><a class="btn btn-primary btn-xs" href="{{ route('transaction.view', $r->id) }}">
+                                             <i class="ti ti-printer ti-xs"></i></a></td>
                                  </tr>
                              @endforeach
                          </tbody>

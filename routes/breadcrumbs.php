@@ -100,6 +100,12 @@ Breadcrumbs::for('report.transaction', function (BreadcrumbTrail $trail) {
     $trail->push('Report', route('report.transaction'));
 });
 
+
+
+Breadcrumbs::for('report.ticket', function (BreadcrumbTrail $trail) {
+    $trail->push('Report', route('report.ticket'));
+});
+
 Breadcrumbs::for('counter', function (BreadcrumbTrail $trail) {
     $trail->push('Counter', route('counter'));
 });

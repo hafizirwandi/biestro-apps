@@ -56,6 +56,18 @@
      <div class="row mb-5">
          <div class="col-md-12">
              <a class="btn btn-primary" href="{{ route('transaction') }}">Back</a>
+
+
+             <a href="javascript:;" onclick="confirmRePrint({{ $data->id }})" class="btn btn-primary">
+                 Re Print Ticket
+             </a>
+
+             <form id="reprint-form-{{ $data->id }}" method="post" action="{{ route('transaction.reprint') }}"
+                 style="display: none;">
+                 @csrf
+                 <input type="hidden" name="id" value="{{ $data->id }}">
+                 <input type="hidden" name="spv_code" id="spv-code-{{ $data->id }}">
+             </form>
          </div>
      </div>
      <div class="row justify-content-center">
@@ -151,9 +163,8 @@
                              </div>
 
                              <div>
-                                 <a href="javascript:;" onclick="printTicket(`{{ $r->id }}`)"
-                                     class="ms-3 btn-remove-order {{ $r->count_print != 0 ? 'ticket-used' : '' }} "
-                                     {{ $r->count_print != 0 ? 'aria-disabled="true" onclick="return false;"' : '' }}>
+                                 <a href="javascript:;" onclick="printTicket(`{{ $r->id }}`, this)"
+                                     class="ms-3 btn-remove-order {{ $r->count_print != 0 ? 'ticket-used' : '' }} ">
                                      <i class="ti ti-printer ti-sm"></i>
                                  </a>
                              </div>
@@ -168,9 +179,11 @@
                      <span class="fw-bold">{{ count($ticket) }}</span>
                  </div>
              </div>
+
              <button onclick="printTicketAll(`{{ $data->id }}`)" class="btn btn-primary w-100 mt-3"
                  {{ $totalPrint === 0 ? 'disabled' : '' }}>Print
                  Ticket</button>
+
          </div>
      </div>
  @endsection
@@ -198,7 +211,7 @@
              });
          }
 
-         function printTicket(id) {
+         function printTicket(id, el) {
              $.ajax({
                  url: "{{ route('transaction.print-ticket') }}",
                  method: 'POST',
@@ -209,7 +222,10 @@
                  success: function(res) {
 
                      if (res.status == 'success') {
+
+
                          alert('Ticket berhasil dicetak!');
+                         window.location.reload();
                      } else {
                          alert('Ticket gagal dicetak!');
                      }
@@ -232,6 +248,7 @@
                  success: function(res) {
                      if (res.status == 'success') {
                          alert('Ticket berhasil dicetak!');
+                         window.location.reload();
                      } else {
                          alert('Ticket gagal dicetak!');
                      }
@@ -243,6 +260,40 @@
              });
          }
 
+
+         function confirmRePrint(id) {
+             Swal.fire({
+                 title: "Supervisor Approval",
+                 text: "Masukkan kode supervisor untuk reprint",
+                 input: 'password',
+                 inputAttributes: {
+                     autocapitalize: 'off',
+                     placeholder: 'Kode Supervisor'
+                 },
+                 showCancelButton: true,
+                 confirmButtonText: "Reprint",
+                 cancelButtonText: "Batal",
+                 showLoaderOnConfirm: true,
+                 preConfirm: (password) => {
+                     if (!password) {
+                         Swal.showValidationMessage("Kode supervisor wajib diisi");
+                         return false;
+                     }
+                     // masukkan password ke hidden input form
+                     document.getElementById(`spv-code-${id}`).value = password;
+                     return true;
+                 },
+                 customClass: {
+                     confirmButton: 'btn btn-primary me-2',
+                     cancelButton: 'btn btn-secondary'
+                 },
+                 buttonsStyling: false
+             }).then((result) => {
+                 if (result.isConfirmed) {
+                     document.getElementById(`reprint-form-${id}`).submit();
+                 }
+             });
+         }
          //  function printTicketAll() {
          //      const ids = [];
 

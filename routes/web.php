@@ -39,14 +39,24 @@ Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::get('/', function () {
     if (Auth::check()) {
-        return redirect('/home');
-    } else {
-        return redirect('/login')->withErrors(['msg' => 'Please log in to continue your session']);
+        $user = Auth::user();
+
+        if ($user->hasRole('cashier')) {
+            return redirect()->intended('/transaction');
+        }
+
+        return redirect()->intended('/home');
     }
+
+    return redirect('/login')->withErrors([
+        'msg' => 'Please log in to continue your session'
+    ]);
 });
 
 Route::middleware('auth:web')->group(function () {
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
+
+    Route::get('/home', [HomeController::class, 'index'])->name('home')->middleware('can:dashboard');
+    Route::get('/dashboard/stat', [HomeController::class, 'stat'])->name('dashboard.stat')->middleware('can:dashboard');
 
     Route::get('/user', [UserController::class, 'index'])->name('user')->middleware('can:user-list');
     Route::get('/user/create', [UserController::class, 'create'])->name('user.create')->middleware('can:user-create');
@@ -136,14 +146,18 @@ Route::middleware('auth:web')->group(function () {
         Route::get('/sales-revenue', [TransactionController::class, 'salesRevenue'])->name('transaction.sales-revenue');
         Route::get('/reprint-receipt', [TransactionController::class, 'reprintReceipt'])->name('transaction.reprint-receipt');
         Route::get('/close', [TransactionController::class, 'close'])->name('transaction.close');
+        Route::get('/delete-draft-transaction/{id}', [TransactionController::class, 'deleteDraftTransaction'])->name('transaction.delete-draft-transaction');
+
 
         Route::post('/set-open-shift', [TransactionController::class, 'setOpenShift'])->name('transaction.set-open-shift');
         Route::post('/set-open-shift', [TransactionController::class, 'setOpenShift'])->name('transaction.set-open-shift');
         Route::post('/set-close-shift', [TransactionController::class, 'setCloseShift'])->name('transaction.set-close-shift');
+        Route::post('/reprint', [TransactionController::class, 'reprint'])->name('transaction.reprint');
     });
 
     Route::prefix('report')->group(function () {
         Route::get('/transaction', [ReportController::class, 'transaction'])->name('report.transaction');
+        Route::get('/ticket', [ReportController::class, 'ticket'])->name('report.ticket');
         Route::get('/detail-transaction-modal/{id}', [ReportController::class, 'detailTransactionModal'])->name('report.detail-transaction-modal');
     });
 

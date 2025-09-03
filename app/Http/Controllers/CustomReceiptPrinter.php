@@ -167,16 +167,13 @@ class CustomReceiptPrinter
     }
     public function printTicket($data)
     {
+        // dd(setting());
         if ($this->printer) {
-
             $this->printer->initialize();
+            $this->printer->feed(2);
             $this->printer->selectPrintMode();
             $this->printer->setJustification(Printer::JUSTIFY_CENTER);
-
-
-            // $this->printLogo();
             $this->printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
-            $this->printer->feed(2);
             $this->printer->text(str_replace('\n', "\n", setting('header_ticket')));
             $this->printer->text("\n");
             $this->printer->selectPrintMode();
@@ -184,15 +181,19 @@ class CustomReceiptPrinter
             $this->printer->text(str_replace('\n', "\n", setting('subheader_ticket')));
             $this->printer->feed(1);
             $this->printer->text($this->printDashedLine());
-            $this->printer->feed(1);
+
+            $this->printer->selectPrintMode();
             $this->printer->setJustification(Printer::JUSTIFY_CENTER);
             $this->printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH + Printer::MODE_DOUBLE_HEIGHT + Printer::MODE_EMPHASIZED);
-            $this->printer->text("\nWAHANA " . $data->wahana->key . "\n");
+            $this->printer->text("\n" . $data->wahana->name . "\n");
             $this->printer->selectPrintMode();
-            $this->printer->text($data->wahana->name . "\n");
-            if (setting('show_barcode')) {
-                $this->printer->qrCode($data->ticket_code, Printer::QR_ECLEVEL_L, 8);
-            }
+            $this->printer->setJustification(Printer::JUSTIFY_CENTER);
+            $this->printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH + Printer::MODE_DOUBLE_HEIGHT + Printer::MODE_EMPHASIZED);
+            $this->printer->text("───────\n");
+            $this->printer->text($data->wahana->key . "\n");
+            $this->printer->text("───────\n");
+            $this->printer->feed(1); // Beri jarak bawah
+            $this->printer->selectPrintMode();
             $this->printer->text($data->ticket_code . "\n");
             $this->printer->selectPrintMode(Printer::MODE_FONT_B);
             $this->printer->text($data->created_at);
@@ -203,7 +204,7 @@ class CustomReceiptPrinter
             $this->printer->selectPrintMode();
             $this->printer->setJustification(Printer::JUSTIFY_CENTER);
             $this->printer->text(str_replace('\n', "\n", setting('footer_ticket')));
-            $this->printer->selectPrintMode();
+
             $this->printer->feed(2);
             $this->printer->cut();
             $this->printer->close();
@@ -219,13 +220,10 @@ class CustomReceiptPrinter
             $this->printer->initialize();
 
             foreach ($tickets as $data) {
+                $this->printer->feed(2);
                 $this->printer->selectPrintMode();
                 $this->printer->setJustification(Printer::JUSTIFY_CENTER);
-
-
-                // $this->printLogo();
                 $this->printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
-                $this->printer->feed(2);
                 $this->printer->text(str_replace('\n', "\n", setting('header_ticket')));
                 $this->printer->text("\n");
                 $this->printer->selectPrintMode();
@@ -236,12 +234,16 @@ class CustomReceiptPrinter
                 $this->printer->feed(1);
                 $this->printer->setJustification(Printer::JUSTIFY_CENTER);
                 $this->printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH + Printer::MODE_DOUBLE_HEIGHT + Printer::MODE_EMPHASIZED);
-                $this->printer->text("\nWAHANA " . $data->wahana->key . "\n");
+                $this->printer->text("\n" . $data->wahana->name . "\n");
                 $this->printer->selectPrintMode();
-                $this->printer->text($data->wahana->name . "\n");
-                if (setting('show_barcode')) {
-                    $this->printer->qrCode($data->ticket_code, Printer::QR_ECLEVEL_L, 8);
-                }
+
+                $this->printer->setJustification(Printer::JUSTIFY_CENTER);
+                $this->printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH + Printer::MODE_DOUBLE_HEIGHT + Printer::MODE_EMPHASIZED);
+                $this->printer->text("───────\n");
+                $this->printer->text($data->wahana->key . "\n");
+                $this->printer->text("───────\n");
+                $this->printer->feed(1); // Beri jarak bawah
+                $this->printer->selectPrintMode();
                 $this->printer->text($data->ticket_code . "\n");
                 $this->printer->selectPrintMode(Printer::MODE_FONT_B);
                 $this->printer->text($data->created_at);
@@ -254,8 +256,9 @@ class CustomReceiptPrinter
                 $this->printer->text(str_replace('\n', "\n", setting('footer_ticket')));
                 $this->printer->selectPrintMode();
                 $this->printer->feed(2);
+                $this->printer->cut();
             }
-            $this->printer->cut();
+
             $this->printer->close();
         } else {
             throw new Exception('Printer has not been initialized.');

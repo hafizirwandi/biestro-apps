@@ -223,12 +223,6 @@
                     </button>
                 </div>
 
-                <div class="col-6 col-md-3 mb-3" id="reprint-receipt">
-                    <button class="btn btn-outline-warning w-100 py-4 d-flex flex-column align-items-center">
-                        <i class="fas fa-receipt fa-2x mb-2"></i>
-                        <span>Reprint Receipt</span>
-                    </button>
-                </div>
             </div>
 
         </div>
@@ -376,7 +370,7 @@
                             <input type="hidden" name="amount_given" id="amountGiven" />
 
                             <div class="mt-2 text-muted">
-                                <small>Kembalian: <strong id="kembalianText">Rp 0</strong></small>
+                                <h2>Kembalian: <strong id="kembalianText">Rp 0</strong></h2>
                             </div>
                         </div>
 
@@ -437,7 +431,7 @@
         const ticket = @json($combined);
 
         const draftList = document.getElementById('draftList');
-        const draft = @json($draft);
+        let draft = @json($draft);
 
         const freeListContainer = document.getElementById('freeList');
         const freeList = [];
@@ -798,7 +792,31 @@
 
             if (confirm('Yakin ingin menghapus semua item?')) {
                 orderList.length = 0; // kosongkan array
+
+                if (selectedDraftTicket != null) {
+                    fetch(`/transaction/delete-draft-transaction/${selectedDraftTicket}`)
+                        .then(response => {
+                            if (!response.ok) throw new Error("Gagal fetch data");
+                            return response.json();
+                        })
+                        .then(res => {
+                            if (res.status === "success") {
+                                window.location.reload();
+                            } else {
+                                alert(res.message || "Gagal hapus draft");
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Error:", err);
+                        });
+                }
+
+
                 renderOrderList(); // render ulang
+
+
+
+
             }
         });
 

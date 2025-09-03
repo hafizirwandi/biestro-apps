@@ -105,21 +105,21 @@
                   </li>
               @endcan
               @can('free-gift-list')
-                  <li class="menu-item {{ request()->routeIs('free-gift') ? 'active' : '' }}">
+                  <li class="menu-item {{ request()->routeIs('free-gift*') ? 'active' : '' }}">
                       <a href="{{ route('free-gift') }}" class="menu-link">
                           <i class="menu-icon tf-icons ti ti-gift"></i>
                           <div data-i18n="Free Gift">Free Gift</div>
                       </a>
                   </li>
               @endcan
-              @canany(['report-transaction'])
+              @canany(['report-transaction', 'report-ticket'])
                   <li class="menu-item {{ isDropdown(['report*']) }}">
                       <a href="javascript:void(0);" class="menu-link menu-toggle">
                           <i class="menu-icon tf-icons ti ti-report"></i>
                           <div data-i18n="Report">Report</div>
                       </a>
                       <ul class="menu-sub">
-                          @can('role-list')
+                          @can('report-transaction')
                               <li class="menu-item {{ request()->routeIs('report.transaction') ? 'active' : '' }}">
                                   <a href="{{ route('report.transaction') }}" class="menu-link">
                                       <div data-i18n="Transaction">Transaction</div>
@@ -127,6 +127,14 @@
                               </li>
                           @endcan
 
+
+                          @can('report-ticket')
+                              <li class="menu-item {{ request()->routeIs('report.ticket') ? 'active' : '' }}">
+                                  <a href="{{ route('report.ticket') }}" class="menu-link">
+                                      <div data-i18n="Ticket">Ticket</div>
+                                  </a>
+                              </li>
+                          @endcan
                       </ul>
                   </li>
               @endcanany

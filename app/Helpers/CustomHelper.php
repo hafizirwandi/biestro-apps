@@ -272,6 +272,12 @@ function setting_field()
             'mod' => 'component ticket',
         ],
 
+        [
+            'label' => 'Spv Approval',
+            'type' => 'password',
+            'name' => 'spv_approve',
+            'mod' => 'SPV Approval',
+        ],
 
     ];
 }

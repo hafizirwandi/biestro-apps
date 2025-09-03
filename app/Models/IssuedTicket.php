@@ -28,4 +28,8 @@ class IssuedTicket extends Model
     {
         return $this->belongsTo(Wahana::class);
     }
+    public function transaction()
+    {
+        return $this->belongsTo(Transaction::class);
+    }
 }

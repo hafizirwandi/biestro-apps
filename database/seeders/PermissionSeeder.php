@@ -45,11 +45,13 @@ class PermissionSeeder extends Seeder
         'counter-edit',
         'counter-delete',
         'counter-create',
+        'dashboard',
         'setting',
         'pos',
         'filemanager-view',
         'audit-trace',
-        'report-transaction'
+        'report-transaction',
+        'report-ticket'
     ];
     public function run(): void
     {

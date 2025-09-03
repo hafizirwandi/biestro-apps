@@ -12,6 +12,15 @@
                      <input type="text" id="bs-rangepicker-basic" name="period" value="{{ request()->period }}"
                          class="form-control">
                  </div>
+                 <div class="col-md-2">
+                     <label>Method</label>
+                     <select name="method" class="form-control">
+                         <option value="all" {{ request('method') == 'all' ? 'selected' : '' }}>All</option>
+                         <option value="cash" {{ request('method') == 'cash' ? 'selected' : '' }}>Cash</option>
+                         <option value="noncash" {{ request('method') == 'noncash' ? 'selected' : '' }}>Noncash</option>
+                     </select>
+
+                 </div>
 
                  <div class="col-md-1">
                      <button type="submit" class="mt-4 btn btn-warning  text-nowrap  btn-sm waves-effect waves-light">
@@ -54,8 +63,7 @@
                                      <div class="d-flex">
                                          <button class="btn btn-icon" onclick="info(`{{ $r->id }}`)"><i
                                                  class="ti ti-info-circle"></i></button>
-                                         <a href="{{ route('transaction.view', $r->id) }}" target="_blank"
-                                             class="btn btn-icon"><i class="ti ti-printer"></i></a>
+
 
                                      </div>
                                  </td>
