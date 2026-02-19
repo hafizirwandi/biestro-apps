@@ -22,15 +22,14 @@ use Illuminate\Support\Facades\Validator;
 use charlieuki\ReceiptPrinter\ReceiptPrinter;
 use Illuminate\Validation\ValidationException;
 
+use Illuminate\Support\Facades\Cache;
+
 class TransactionController extends Controller
 {
     public function index()
     {
         $id = auth()->user()->id;
-        $shift = CashierShift::where('user_id', $id)
-            ->whereDate('opened_at', Carbon::today())
-            ->latest()
-            ->first();
+        $shift = CashierShift::where('user_id', $id)->whereDate('opened_at', Carbon::today())->latest()->first();
 
         if ($shift) {
             if ($shift->status !== 'open') {
@@ -50,26 +49,30 @@ class TransactionController extends Controller
                 $arr['min_purchase'] = (int) $item->min_purchase;
 
                 // Ambil list wahana (misalnya hanya nama & id)
-                $arr['wahanas'] = $item->wahanas->map(function ($w) {
-                    return [
-                        'id'   => $w->id,
-                        'name' => $w->name,
-                        'qty' => $w->pivot->qty // kalau ada
-                    ];
-                })->toArray();
+                $arr['wahanas'] = $item->wahanas
+                    ->map(function ($w) {
+                        return [
+                            'id' => $w->id,
+                            'name' => $w->name,
+                            'qty' => $w->pivot->qty, // kalau ada
+                        ];
+                    })
+                    ->toArray();
 
                 return $arr;
             })
             ->toArray();
 
-        $draft = Transaction::where('payment_status', 'pending')->where('user_id', auth()->user()->id)->get()
+        $draft = Transaction::where('payment_status', 'pending')
+            ->where('user_id', auth()->user()->id)
+            ->get()
             ->map(function ($item) {
                 $arr = $item->toArray();
                 $arr['total_item'] = count($item->details);
                 $arr['created_at'] = $item->created_at->format('d-M-Y H:i');
                 return $arr;
-            })->toArray();
-
+            })
+            ->toArray();
 
         $ticket = Ticket::where('is_active', '1')
             ->get()
@@ -91,19 +94,19 @@ class TransactionController extends Controller
                     'id' => $item->id,
                     'name' => $item->name,
                     'price' => $item->price,
-                    'detail' => $item->wahanas->map(function ($wahana) {
-                        return [
-                            'name' => $wahana->name,
-                            'qty' => $wahana->pivot->qty,
-                        ];
-                    })->toArray(),
+                    'detail' => $item->wahanas
+                        ->map(function ($wahana) {
+                            return [
+                                'name' => $wahana->name,
+                                'qty' => $wahana->pivot->qty,
+                            ];
+                        })
+                        ->toArray(),
                 ];
                 return $array;
             });
 
         $combined = $ticket->concat($ticketPackage);
-
-
 
         return view('transaction.index', compact('combined', 'draft', 'fg', 'shift'));
     }
@@ -113,24 +116,20 @@ class TransactionController extends Controller
             ->where('is_active', 1)
             ->get();
 
-
         $result = [];
         $wahanaFree = [];
         foreach ($rules as $rule) {
             if ($totalHarga >= $rule->min_purchase) {
                 // hitung multiple
-                $multiplier = $rule->is_multiple
-                    ? floor($totalHarga / $rule->min_purchase)
-                    : 1;
+                $multiplier = $rule->is_multiple ? floor($totalHarga / $rule->min_purchase) : 1;
                 $gifts = [];
 
                 foreach ($rule->wahanas as $wahana) {
                     $wahanaId = $wahana->id;
                     $gifts[] = [
                         'wahana_id' => $wahana->id,
-                        'wahana'  => $wahana->name,
+                        'wahana' => $wahana->name,
                         'qty' => $wahana->pivot->qty,
-
                     ];
 
                     if (isset($wahanaFree[$wahanaId])) {
@@ -139,60 +138,57 @@ class TransactionController extends Controller
                     } else {
                         $wahanaFree[$wahanaId] = [
                             'wahana_id' => $wahanaId,
-                            'wahana'    => $wahana->name,
-                            'qty'       => intval($wahana->pivot->qty * $multiplier),
+                            'wahana' => $wahana->name,
+                            'qty' => intval($wahana->pivot->qty * $multiplier),
                         ];
                     }
                 }
 
                 $result[] = [
-                    'rule_id'   => $rule->id,
+                    'rule_id' => $rule->id,
                     'rule_name' => $rule->name,
-                    'multiple'  => $multiplier,
-                    'gifts'     => $gifts,
+                    'multiple' => $multiplier,
+                    'gifts' => $gifts,
                 ];
             }
         }
 
-
         return response()->json([
             'total_harga' => $totalHarga,
-            'free_gifts'  => $result,
+            'free_gifts' => $result,
             'wahana_free' => array_values($wahanaFree),
         ]);
     }
     public function getDetail($id)
     {
-        $data = Transaction::findOrFail($id)->details()->get()->map(function ($item) {
-
-            if (isset($item->ticket_id)) {
-                $id = $item->ticket_id;
-                $type = 'ticket';
-                $name = $item->ticket->name;
-            }
-            if (isset($item->ticket_package_id)) {
-                $id = $item->ticket_package_id;
-                $type = 'package';
-                $name = $item->ticketPackage->name;
-            }
-            $array = [
-                'id' => (string)$id,
-                'name' => $name,
-                'type' => $type,
-                'price' => (int)$item->price_each,
-                'qty' => $item->quantity,
-            ];
-            return $array;
-        });
-
-
+        $data = Transaction::findOrFail($id)
+            ->details()
+            ->get()
+            ->map(function ($item) {
+                if (isset($item->ticket_id)) {
+                    $id = $item->ticket_id;
+                    $type = 'ticket';
+                    $name = $item->ticket->name;
+                }
+                if (isset($item->ticket_package_id)) {
+                    $id = $item->ticket_package_id;
+                    $type = 'package';
+                    $name = $item->ticketPackage->name;
+                }
+                $array = [
+                    'id' => (string) $id,
+                    'name' => $name,
+                    'type' => $type,
+                    'price' => (int) $item->price_each,
+                    'qty' => $item->quantity,
+                ];
+                return $array;
+            });
 
         return response()->json($data);
     }
     public function store(Request $request)
     {
-
-
         // dd($request->input());
 
         if ($request->input('draft') == 'true') {
@@ -201,7 +197,7 @@ class TransactionController extends Controller
                 'order_list' => 'required|string',
                 'free_rule' => 'nullable|string',
                 'draft' => 'required',
-                'transaction_id' => 'nullable'
+                'transaction_id' => 'nullable',
             ];
             $payment_status = 'pending';
         } else {
@@ -212,7 +208,7 @@ class TransactionController extends Controller
                 'free_rule' => 'nullable|string',
                 'amount_given' => 'nullable|numeric',
                 'noncash_method' => 'nullable|string',
-                'bank' => 'nullable|string',
+                'noncash_channel' => 'nullable|string',
             ];
             $payment_status = 'paid';
         }
@@ -223,11 +219,9 @@ class TransactionController extends Controller
         if ($validator->fails()) {
             return back()
                 ->withErrors($validator) // kirim error ke session
-                ->withInput()            // biar value lama tetap terisi
+                ->withInput() // biar value lama tetap terisi
                 ->with('error', 'Data tidak valid, periksa kembali input Anda.');
         }
-
-
 
         $orderList = json_decode($request->order_list, true);
         $freeRule = json_decode($request->free_rule, true);
@@ -236,20 +230,33 @@ class TransactionController extends Controller
             return back()->with('error', 'Daftar order kosong.');
         }
 
+        // --- LAPIS 2: Backend Atomic Lock ---
+        // Kunci berdasarkan User ID (atau kombinasi shift ID)
+        // Format key: 'transaction_lock_USERID'
+        $lockKey = 'transaction_lock_' . auth()->user()->id;
+
+        // Coba dapatkan lock selama 5 detik
+        $lock = Cache::lock($lockKey, 5);
+
+        if (!$lock->get()) {
+            // Jika lock sedang aktif (user sudah submit < 5 detik lalu)
+            // Langsung tolak request
+            return back()->with('error', 'Transaksi sedang diproses. Mohon tunggu sebentar.');
+        }
+
         DB::beginTransaction();
         try {
-
             $dataTransaction = [
                 'transaction_code' => uniqid(),
                 'payment_status' => $payment_status,
                 'payment_type' => $request->payment_type ?? null,
                 'amount_given' => $request->amount_given ?? null,
                 'noncash_method' => $request->noncash_method ?? null,
-                'bank' => $request->bank ?? null,
+                'noncash_channel' => $request->noncash_channel ?? null,
                 'total_amount' => $request->total,
                 'user_id' => auth()->user()->id,
                 'cashier_shift_id' => session('cashier_shift_id'),
-                'paid_at' => now()
+                'paid_at' => now(),
             ];
             if ($request->input('transaction_id')) {
                 $transaction = Transaction::findOrFail($request->input('transaction_id'));
@@ -283,23 +290,49 @@ class TransactionController extends Controller
                     'free_gift_rule_id' => $item['rule_id'],
                     'quantity' => $item['multiple'],
                     'is_claim' => true,
-                    'claimed_at' => now()
+                    'claimed_at' => now(),
                 ]);
             }
-
-
             DB::commit();
+            $lock->release(); // Lepaskan lock jika berhasil
+
             if ($request->input('draft') == 'true') {
+                // Draft: always redirect back (form submit)
                 return back()->with('success', 'Transaksi berhasil disimpan');
             } else {
                 $this->generateIssuedTickets($transaction);
                 DB::commit();
+
+                // AJAX request from POS index page → return JSON so page doesn't reload
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['status' => 'ok', 'id' => $transaction->id]);
+                }
+
+                // Normal (direct) form submit → redirect as before
                 return redirect()->route('transaction.view', $transaction->id)->with('success', 'Transaksi berhasil disimpan.');
             }
         } catch (\Exception $e) {
             DB::rollBack();
+            $lock->release(); // Lepaskan lock jika gagal
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['status' => 'error', 'message' => $e->getMessage()], 422);
+            }
             return back()->with('error', 'Gagal menyimpan transaksi: ' . $e->getMessage());
         }
+    }
+
+    // Render the view partial for AJAX modal injection (no layout)
+    public function viewPartial($id)
+    {
+        $data = Transaction::with(['details', 'freeGifts'])
+            ->where('payment_status', 'paid')
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $ticket = IssuedTicket::where('transaction_id', $id)->get();
+
+        return view('transaction.view-partial', compact('data', 'ticket'));
     }
     public function view($id)
     {
@@ -315,8 +348,7 @@ class TransactionController extends Controller
         $ruleIds = $data->freeGifts->pluck('free_gift_rule_id');
 
         // Cari tiket berdasarkan detail_id ATAU free_gift_rule_id
-        $ticket = IssuedTicket::where('transaction_id', $id)
-            ->get();
+        $ticket = IssuedTicket::where('transaction_id', $id)->get();
 
         return view('transaction.view', compact('data', 'ticket'));
     }
@@ -325,27 +357,22 @@ class TransactionController extends Controller
         try {
             $transaction = Transaction::with('details')->where('id', $request->transaction_id)->where('payment_status', 'paid')->firstOrFail();
 
-
-            // Init printer
-            $printer = new CustomReceiptPrinter;
-            // dd(setting());
-
-            $connected = $printer->init(setting('connector_type'), setting('connector_descriptor'));
-
-            // ✅ cek apakah berhasil konek
-            // if ($connected === false || $connected === null) {
-            //     throw new \Exception("Printer tidak tersambung atau mati.");
-            // }
-
-            $printer->printBill($transaction->details, $transaction->total_amount);
-
+            // Skip server-side print when called from Web Bluetooth (browser already printed)
+            if (!$request->input('_bt')) {
+                $printer = new CustomReceiptPrinter();
+                $printer->init(setting('connector_type'), setting('connector_descriptor'));
+                $printer->printBill($transaction->details, $transaction->total_amount);
+            }
 
             return response()->json(['status' => 'success']);
         } catch (Exception $e) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => $e->getMessage(),
-            ], 500);
+            return response()->json(
+                [
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
     public function printTicket(Request $request)
@@ -353,16 +380,12 @@ class TransactionController extends Controller
         try {
             $data = IssuedTicket::findOrFail($request->id);
 
-            $printer = new CustomReceiptPrinter;
-            $connected = $printer->init(setting('connector_type'), setting('connector_descriptor'));
-
-            // ✅ cek apakah berhasil konek
-            if ($connected === false || $connected === null) {
-                // throw new \Exception("Printer tidak tersambung atau mati.");
+            // Skip server-side print when called from Web Bluetooth
+            if (!$request->input('_bt')) {
+                $printer = new CustomReceiptPrinter();
+                $printer->init(setting('connector_type'), setting('connector_descriptor'));
+                $printer->printTicket($data);
             }
-
-            $printer->printTicket($data);
-
 
             $data->count_print += 1;
             $data->last_printed_at = now();
@@ -370,28 +393,26 @@ class TransactionController extends Controller
 
             return response()->json(['status' => 'success']);
         } catch (\Exception $e) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => $e->getMessage(),
-            ], 500);
+            return response()->json(
+                [
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
     public function printTicketAll(Request $request)
     {
         try {
-            // $data = Transaction::where('payment_status', 'paid')->where('id', $request->transaction_id)->first();
-            // $detailIds = $data->details->pluck('id'); // Ambil semua ID dari details
-            // $tickets = IssuedTicket::whereIn('transaction_detail_id', $detailIds)->get();
             $tickets = IssuedTicket::where('transaction_id', $request->transaction_id)->get();
-            // Init printer
-            $printer = new CustomReceiptPrinter;
-            $connected = $printer->init(setting('connector_type'), setting('connector_descriptor'));
 
-            // if ($connected === false || $connected === null) {
-            //     throw new \Exception("Printer tidak tersambung atau mati.");
-            // }
-
-            $printer->printTicketAll($tickets);
+            // Skip server-side print when called from Web Bluetooth
+            if (!$request->input('_bt')) {
+                $printer = new CustomReceiptPrinter();
+                $printer->init(setting('connector_type'), setting('connector_descriptor'));
+                $printer->printTicketAll($tickets);
+            }
 
             foreach ($tickets as $r) {
                 $r->count_print += 1;
@@ -401,10 +422,13 @@ class TransactionController extends Controller
 
             return response()->json(['status' => 'success']);
         } catch (Exception $e) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => $e->getMessage(),
-            ], 500);
+            return response()->json(
+                [
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
     public function generateIssuedTickets($transaction)
@@ -419,10 +443,10 @@ class TransactionController extends Controller
                 for ($k = 0; $k < $totalTickets; $k++) {
                     $ticketCode = $this->generateUniqueTicketCode($r->id);
                     IssuedTicket::create([
-                        'transaction_id'     => $transaction->id,
-                        'free_gift_rule_id'  => $fg->free_gift_rule_id,
-                        'wahana_id'          => $r->id,
-                        'ticket_code'        => $ticketCode,
+                        'transaction_id' => $transaction->id,
+                        'free_gift_rule_id' => $fg->free_gift_rule_id,
+                        'wahana_id' => $r->id,
+                        'ticket_code' => $ticketCode,
                     ]);
                 }
             }
@@ -431,8 +455,7 @@ class TransactionController extends Controller
         foreach ($transaction->details as $detail) {
             if (isset($detail->ticket_id)) {
                 for ($i = 0; $i < $detail->quantity; $i++) {
-
-                    $ticketCode =  $this->generateUniqueTicketCode($detail->ticket->wahana_id);
+                    $ticketCode = $this->generateUniqueTicketCode($detail->ticket->wahana_id);
                     IssuedTicket::create([
                         'transaction_id' => $transaction->id,
                         'transaction_detail_id' => $detail->id,
@@ -447,14 +470,15 @@ class TransactionController extends Controller
             if (isset($detail->ticket_package_id)) {
                 // Ambil paket dan relasi wahananya
                 $package = TicketPackage::with('wahanas')->find($detail->ticket_package_id);
-                if (!$package) continue;
+                if (!$package) {
+                    continue;
+                }
 
                 foreach ($package->wahanas as $wahana) {
-
                     // Setiap wahana, buat tiket sebanyak qty
                     for ($i = 0; $i < $detail->quantity; $i++) {
                         for ($j = 0; $j < $wahana->pivot->qty; $j++) {
-                            $ticketCode =  $this->generateUniqueTicketCode($wahana->id);
+                            $ticketCode = $this->generateUniqueTicketCode($wahana->id);
                             IssuedTicket::create([
                                 'transaction_id' => $transaction->id,
                                 'transaction_detail_id' => $detail->id,
@@ -476,10 +500,7 @@ class TransactionController extends Controller
 
         return DB::transaction(function () use ($wahanaId, $today) {
             // Lock baris kombinasi wahana_id + tanggal untuk hindari race condition
-            $sequence = DailyTicketSequence::where('wahana_id', $wahanaId)
-                ->where('date', $today)
-                ->lockForUpdate()
-                ->first();
+            $sequence = DailyTicketSequence::where('wahana_id', $wahanaId)->where('date', $today)->lockForUpdate()->first();
 
             if (!$sequence) {
                 $sequence = DailyTicketSequence::create([
@@ -499,7 +520,6 @@ class TransactionController extends Controller
             return "BIE-{$random1}{$number}{$random2}";
         });
     }
-
 
     public function openShift()
     {
@@ -532,17 +552,14 @@ class TransactionController extends Controller
         $transaction = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get();
         $totalCash = $transaction->where('payment_type', 'cash')->sum('total_amount');
 
-
         if (!$shiftId) {
-            return redirect()->route('transaction.open-shift')
-                ->with('error', 'Shift anda belum terbuat, silahkan open shift untuk memulai transaksi');
+            return redirect()->route('transaction.open-shift')->with('error', 'Shift anda belum terbuat, silahkan open shift untuk memulai transaksi');
         }
 
         $shift = CashierShift::find($shiftId);
 
         if (!$shift) {
-            return redirect()->route('transaction.open-shift')
-                ->with('error', 'Shift tidak ditemukan.');
+            return redirect()->route('transaction.open-shift')->with('error', 'Shift tidak ditemukan.');
         }
 
         $system_balance = $shift->opening_balance + $totalCash;
@@ -560,7 +577,6 @@ class TransactionController extends Controller
                 'opening_balance' => 'required|numeric|min:0',
             ];
 
-
             $data = $request->validate($rules);
 
             $data['user_id'] = auth()->user()->id;
@@ -575,60 +591,152 @@ class TransactionController extends Controller
     }
     public function setCloseShift(Request $request)
     {
-
+        $isAjax = $request->ajax() || $request->wantsJson();
 
         try {
             $rules = [
                 'cashier_shift_id' => 'required|exists:cashier_shifts,id',
                 'closing_balance' => 'required',
-                'system_balance' => 'required',
-                'difference' => 'required',
+                'system_balance' => 'nullable',
+                'difference' => 'nullable',
                 'notes' => 'nullable',
             ];
 
             $data = $request->validate($rules);
 
-
-
             $shift = CashierShift::findOrFail($data['cashier_shift_id']);
 
-
-            // Pastikan shift masih open
             if ($shift->closed_at) {
-                return back()->with('error', 'Shift ini sudah ditutup sebelumnya.');
+                $msg = 'Shift ini sudah ditutup sebelumnya.';
+                return $isAjax ? response()->json(['status' => 'error', 'message' => $msg], 422) : back()->with('error', $msg);
             }
 
+            $closing_balance = (int) preg_replace('/[^\d]/', '', $request->closing_balance);
+            $system_balance = (int) preg_replace('/[^\d]/', '', $request->system_balance);
+            $difference = (int) preg_replace('/[^\d\-]/', '', $request->difference);
 
-            $closing_balance = preg_replace('/[^\d]/', '', $request->closing_balance);
-            $system_balance  = preg_replace('/[^\d]/', '', $request->system_balance);
-            $difference      = preg_replace('/[^\d\-]/', '', $request->difference);
-
-            $shift->closing_balance = (int) $closing_balance;
-            $shift->system_balance  = (int) $system_balance;
-            $shift->difference      = (int) $difference;
-            $shift->notes            = $request->notes;
+            $shift->closing_balance = $closing_balance;
+            $shift->system_balance = $system_balance;
+            $shift->difference = $difference;
+            $shift->status_balance = $difference > 0 ? 'surplus' : ($difference < 0 ? 'deficit' : 'balanced');
+            $shift->notes = $request->notes;
             $shift->closed_at = now();
-            $shift->status = 'closed'; // kalau ada field status
+            $shift->status = 'closed';
             $shift->save();
 
+            // Clear cashier session so next page load knows shift is done
+            session()->forget('cashier_shift_id');
 
-            $msg = 'Cashier Shift closed successfully';
-            return redirect()->route('transaction')->with('success', $msg);
+            if ($isAjax) {
+                return response()->json([
+                    'status' => 'ok',
+                    'redirect_url' => route('transaction.close'),
+                ]);
+            }
+
+            return redirect()->route('transaction.close')->with('success', 'Cashier Shift closed successfully');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $isAjax ? response()->json(['status' => 'error', 'message' => implode(' ', collect($e->errors())->flatten()->toArray())], 422) : back()->with('error', 'Validasi gagal.');
         } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
+            return $isAjax ? response()->json(['status' => 'error', 'message' => $e->getMessage()], 500) : back()->with('error', $e->getMessage());
         }
     }
-    public function salesRevenue()
+
+    public function salesRevenue(Request $request)
     {
         $shiftId = session('cashier_shift_id');
         $shift = CashierShift::find($shiftId);
-        $transaction = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get();
-        return view('transaction.sales-revenue', compact('transaction', 'shift'));
+
+        $query = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid');
+
+        // Filtering
+        if ($request->has('filter') && $request->filter != '') {
+            $filter = $request->filter;
+            if ($filter == 'cash') {
+                $query->where('payment_type', 'cash');
+            } elseif ($filter == 'noncash') {
+                $query->where('payment_type', 'noncash');
+            } elseif (in_array($filter, ['qris', 'transfer', 'edc', 'lainnya'])) {
+                $query->where('noncash_method', $filter);
+            }
+        }
+
+        $transaction = $query->get();
+
+        // Data for Footer (Summary of the whole shift)
+        $allTransactions = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get();
+
+        $totalCash = $allTransactions->where('payment_type', 'cash')->sum('total_amount');
+        $totalNonCash = $allTransactions->where('payment_type', 'noncash')->sum('total_amount');
+        $grandTotal = $allTransactions->sum('total_amount');
+
+        // Breakdown Non-Cash by Channel
+        // Group by channel
+        $nonCashBreakdown = $allTransactions
+            ->where('payment_type', 'noncash')
+            ->groupBy('noncash_channel')
+            ->map(function ($row) {
+                return $row->sum('total_amount');
+            });
+
+        return view('transaction.sales-revenue', compact('transaction', 'shift', 'totalCash', 'totalNonCash', 'grandTotal', 'nonCashBreakdown'));
     }
+    public function getShiftData()
+    {
+        $shiftId = session('cashier_shift_id');
+        $shift = CashierShift::find($shiftId);
+
+        if (!$shift) {
+            return response()->json(['status' => 'error', 'message' => 'Shift not found.'], 404);
+        }
+
+        $allTx = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get();
+
+        $totalCash = $allTx->where('payment_type', 'cash')->sum('total_amount');
+        $totalNonCash = $allTx->where('payment_type', 'noncash')->sum('total_amount');
+        $grandTotal = $allTx->sum('total_amount');
+
+        $systemBalance = $shift->opening_balance + $totalCash;
+
+        // Non-cash breakdown by method
+        $byMethod = $allTx->where('payment_type', 'noncash')->groupBy('noncash_method')->map(fn($rows) => $rows->sum('total_amount'))->toArray();
+
+        // Non-cash breakdown by channel
+        $byChannel = $allTx->where('payment_type', 'noncash')->groupBy('noncash_channel')->map(fn($rows) => $rows->sum('total_amount'))->toArray();
+
+        return response()->json([
+            'shift' => [
+                'id' => $shift->id,
+                'opened_at' => $shift->opened_at ? \Carbon\Carbon::parse($shift->opened_at)->format('d M Y H:i') : '-',
+                'opening_balance' => $shift->opening_balance,
+                'status' => $shift->status,
+                'cashier' => $shift->user->name ?? '-',
+                'counter' => $shift->counter->name ?? '-',
+            ],
+            'system_balance' => $systemBalance,
+            'total_cash' => $totalCash,
+            'total_noncash' => $totalNonCash,
+            'grand_total' => $grandTotal,
+            'by_method' => $byMethod,
+            'by_channel' => $byChannel,
+        ]);
+    }
+
     public function close()
     {
+        $shiftId = session('cashier_shift_id');
+        $shift = CashierShift::find($shiftId);
 
-        return view('transaction.close');
+        $allTx = $shift ? Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get() : collect();
+
+        $totalCash = $allTx->where('payment_type', 'cash')->sum('total_amount');
+        $totalNonCash = $allTx->where('payment_type', 'noncash')->sum('total_amount');
+        $grandTotal = $allTx->sum('total_amount');
+
+        $byMethod = $allTx->where('payment_type', 'noncash')->groupBy('noncash_method')->map(fn($r) => $r->sum('total_amount'))->toArray();
+        $byChannel = $allTx->where('payment_type', 'noncash')->groupBy('noncash_channel')->map(fn($r) => $r->sum('total_amount'))->toArray();
+
+        return view('transaction.close', compact('shift', 'totalCash', 'totalNonCash', 'grandTotal', 'byMethod', 'byChannel'));
     }
 
     public function reprintReceipt()
@@ -654,8 +762,7 @@ class TransactionController extends Controller
             }
 
             // reset count_print semua tiket dari transaksi terkait
-            IssuedTicket::where('transaction_id', $data['id'])
-                ->update(['count_print' => 0]);
+            IssuedTicket::where('transaction_id', $data['id'])->update(['count_print' => 0]);
 
             return back()->with('success', 'Tickets berhasil di-reset dan siap di reprint');
         } catch (\Exception $e) {
@@ -665,37 +772,42 @@ class TransactionController extends Controller
     public function deleteDraftTransaction($id)
     {
         try {
-            $data = Transaction::where('id', $id)
-                ->where('payment_status', 'pending')
-                ->first();
+            $data = Transaction::where('id', $id)->where('payment_status', 'pending')->first();
 
             if (!$data) {
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => 'Data not found!',
-                ], 404); // pakai 404
+                return response()->json(
+                    [
+                        'status' => 'error',
+                        'message' => 'Data not found!',
+                    ],
+                    404,
+                ); // pakai 404
             }
 
             $data->delete();
 
-            return response()->json([
-                'status'  => 'success',
-                'message' => 'Data deleted successfully',
-            ], 200); // pakai 200
+            return response()->json(
+                [
+                    'status' => 'success',
+                    'message' => 'Data deleted successfully',
+                ],
+                200,
+            ); // pakai 200
         } catch (\Exception $e) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => $e->getMessage(),
-            ], 500); // ini oke untuk error tak terduga
+            return response()->json(
+                [
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ],
+                500,
+            ); // ini oke untuk error tak terduga
         }
     }
-
 
     // public function printUsb(Request $request)
     // {
     //     $sale_id = $request->input('sale_id');
     //     $q = Sale::findOrFail($sale_id);
-
 
     //     $user = Auth::user();
     //     $store_id = $user->store_id;
@@ -718,14 +830,12 @@ class TransactionController extends Controller
     //         config('receiptprinter.connector_descriptor')
     //     );
 
-
     //     // Print receipt
     //     $printer->printReceipt($params, $q->detailItem);
     // }
     // public function printBt($id)
     // {
     //     $q = Sale::findOrFail($id);
-
 
     //     $user = Auth::user();
     //     $store_id = $user->store_id;

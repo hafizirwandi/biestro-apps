@@ -42,7 +42,6 @@ Breadcrumbs::for('filemanager', function (BreadcrumbTrail $trail) {
     $trail->push('Filemanager', route('filemanager'));
 });
 
-
 //Audit Trace
 Breadcrumbs::for('audit-trace', function (BreadcrumbTrail $trail) {
     $trail->push('Audit Trace', route('audit-trace'));
@@ -51,7 +50,6 @@ Breadcrumbs::for('audit-trace', function (BreadcrumbTrail $trail) {
 Breadcrumbs::for('change-password', function (BreadcrumbTrail $trail) {
     $trail->push('Change Password', route('change-password'));
 });
-
 
 Breadcrumbs::for('wahana', function (BreadcrumbTrail $trail) {
     $trail->push('Wahana', route('wahana'));
@@ -75,7 +73,6 @@ Breadcrumbs::for('ticket-package.edit', function (BreadcrumbTrail $trail, $id) {
     $trail->push('Edit', route('ticket-package.edit', $id));
 });
 
-
 Breadcrumbs::for('free-gift', function (BreadcrumbTrail $trail) {
     $trail->push('Free Gift Rule', route('free-gift'));
 });
@@ -90,20 +87,28 @@ Breadcrumbs::for('free-gift.edit', function (BreadcrumbTrail $trail, $id) {
     $trail->push('Edit', route('free-gift.edit', $id));
 });
 
-
 Breadcrumbs::for('transaction', function (BreadcrumbTrail $trail) {
     $trail->push('Transaction', route('transaction'));
 });
-
 
 Breadcrumbs::for('report.transaction', function (BreadcrumbTrail $trail) {
     $trail->push('Report', route('report.transaction'));
 });
 
-
-
 Breadcrumbs::for('report.ticket', function (BreadcrumbTrail $trail) {
-    $trail->push('Report', route('report.ticket'));
+    $trail->push('Report / Ticket', route('report.ticket'));
+});
+
+Breadcrumbs::for('report.shift', function (BreadcrumbTrail $trail) {
+    $trail->push('Report / Shift Cashier', route('report.shift'));
+});
+
+Breadcrumbs::for('report.items', function (BreadcrumbTrail $trail) {
+    $trail->push('Report / Item Sales', route('report.items'));
+});
+
+Breadcrumbs::for('report.payment', function (BreadcrumbTrail $trail) {
+    $trail->push('Report / Payment Methods', route('report.payment'));
 });
 
 Breadcrumbs::for('counter', function (BreadcrumbTrail $trail) {

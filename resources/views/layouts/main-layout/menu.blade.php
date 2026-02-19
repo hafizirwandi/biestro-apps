@@ -135,6 +135,23 @@
                                   </a>
                               </li>
                           @endcan
+
+                          <li class="menu-item {{ request()->routeIs('report.shift') ? 'active' : '' }}">
+                              <a href="{{ route('report.shift') }}" class="menu-link">
+                                  <div data-i18n="Shift Cashier">Shift Cashier</div>
+                              </a>
+                          </li>
+                          <li class="menu-item {{ request()->routeIs('report.items') ? 'active' : '' }}">
+                              <a href="{{ route('report.items') }}" class="menu-link">
+                                  <div data-i18n="Item Sales">Item Sales</div>
+                              </a>
+                          </li>
+                          <li class="menu-item {{ request()->routeIs('report.payment') ? 'active' : '' }}">
+                              <a href="{{ route('report.payment') }}" class="menu-link">
+                                  <div data-i18n="Payment Methods">Payment Methods</div>
+                              </a>
+                          </li>
+
                       </ul>
                   </li>
               @endcanany
