@@ -276,7 +276,7 @@
                 {{-- Wahana Sold — semua halaman --}}
                 <button class="pdm-btn"
                     onclick="openWahanaSoldModal(); document.getElementById('posDotsMenu').classList.remove('show');">
-                    <i class="ti ti-ferris-wheel text-warning" style="color:#d97706 !important;"></i> Wahana Sold
+                    <i class="ti ti-chart-bar text-warning" style="color:#d97706 !important;"></i> Wahana Sold
                 </button>
 
                 <div class="pdm-divider"></div>

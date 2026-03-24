@@ -10,7 +10,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;">
-                <h5 class="modal-title"><i class="ti ti-ferris-wheel me-2"></i>Wahana Sold Dashboard</h5>
+                <h5 class="modal-title text-white"><i class="ti ti-ferris-wheel me-2"></i>Wahana Sold Dashboard</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body bg-light p-3">

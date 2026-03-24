@@ -959,7 +959,135 @@ class TransactionController extends Controller
         }
     }
 
-    // public function printUsb(Request $request)
+    /**
+     * AJAX: Save current cart as a pending draft transaction.
+     */
+    public function saveDraft(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'total' => 'required|numeric',
+            'order_list' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'message' => $validator->errors()->first()], 422);
+        }
+
+        $orderList = json_decode($request->order_list, true);
+        $freeRule = json_decode($request->free_rule ?? '[]', true) ?? [];
+
+        if (!is_array($orderList) || count($orderList) === 0) {
+            return response()->json(['status' => 'error', 'message' => 'Order list kosong.'], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $dataTransaction = [
+                'transaction_code' => uniqid(),
+                'payment_status' => 'pending',
+                'payment_type' => null,
+                'total_amount' => $request->total,
+                'user_id' => auth()->user()->id,
+                'cashier_shift_id' => session('cashier_shift_id'),
+                'paid_at' => null,
+            ];
+
+            // Update existing draft if transaction_id supplied
+            if ($request->filled('transaction_id')) {
+                $transaction = Transaction::where('id', $request->transaction_id)->where('payment_status', 'pending')->firstOrFail();
+                $transaction->update($dataTransaction);
+                $transaction->details()->delete();
+                $transaction->freeGifts()->delete();
+            } else {
+                $transaction = Transaction::create($dataTransaction);
+            }
+
+            foreach ($orderList as $item) {
+                $isPackage = $item['type'] === 'package';
+                TransactionDetail::create([
+                    'transaction_id' => $transaction->id,
+                    'ticket_id' => $isPackage ? null : $item['id'],
+                    'ticket_package_id' => $isPackage ? $item['id'] : null,
+                    'quantity' => $item['qty'],
+                    'price_each' => $item['price'],
+                    'subtotal' => $item['price'] * $item['qty'],
+                ]);
+            }
+
+            foreach ($freeRule as $item) {
+                TransactionFreeGift::create([
+                    'transaction_id' => $transaction->id,
+                    'free_gift_rule_id' => $item['rule_id'],
+                    'quantity' => $item['multiple'],
+                    'is_claim' => true,
+                    'claimed_at' => now(),
+                ]);
+            }
+
+            DB::commit();
+            return response()->json(['status' => 'ok', 'id' => $transaction->id, 'message' => 'Draft tersimpan.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * AJAX: Return list of pending transactions for the current shift/user.
+     */
+    public function pendingList()
+    {
+        $shiftId = session('cashier_shift_id');
+        $list = Transaction::with('details')
+            ->where('payment_status', 'pending')
+            ->where('user_id', auth()->id())
+            ->when($shiftId, fn($q) => $q->where('cashier_shift_id', $shiftId))
+            ->latest()
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'transaction_code' => $t->transaction_code,
+                    'total_amount' => $t->total_amount,
+                    'total_item' => $t->details->count(),
+                    'created_at' => $t->created_at->format('d M Y H:i'),
+                ];
+            });
+
+        return response()->json(['status' => 'ok', 'data' => $list]);
+    }
+
+    /**
+     * AJAX: Return detail items of a pending transaction ready for localStorage.
+     */
+    public function pendingDetail($id)
+    {
+        $t = Transaction::with(['details.ticket', 'details.ticketPackage'])
+            ->where('id', $id)
+            ->where('payment_status', 'pending')
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        $items = $t->details->map(function ($d) {
+            $isPackage = $d->ticket_package_id !== null;
+            $item = $isPackage ? $d->ticketPackage : $d->ticket;
+            return [
+                'id' => (string) ($item ? $item->id : $d->ticket_id ?? $d->ticket_package_id),
+                'name' => $item ? $item->name : 'Unknown',
+                'price' => (float) $d->price_each,
+                'qty' => (int) $d->quantity,
+                'type' => $isPackage ? 'package' : 'ticket',
+            ];
+        });
+
+        return response()->json([
+            'status' => 'ok',
+            'transaction_id' => $t->id,
+            'total' => $t->total_amount,
+            'items' => $items,
+        ]);
+    }
+
     // {
     //     $sale_id = $request->input('sale_id');
     //     $q = Sale::findOrFail($sale_id);

@@ -277,7 +277,14 @@
     @include('transaction.partials._session-bar', ['shift' => $shift, 'pageContext' => 'index'])
     @include('transaction.partials._ticket-sold-modal')
     @include('transaction.partials._wahana-sold-modal')
-    <div class="d-flex flex-wrap gap-3 mb-4" id="draftList"></div>
+
+    {{-- Pending transaction quick-access bar --}}
+    <div class="mb-3 d-flex gap-2 align-items-center">
+        <button type="button" id="btnPendingTx" class="btn btn-warning btn-sm" onclick="openPendingModal()">
+            <i class="ti ti-clock-pause"></i> Transaksi Pending
+            <span id="pendingBadge" class="badge bg-dark ms-1">0</span>
+        </button>
+    </div>
 
     <div class="row">
         <div class="col-md-8">
@@ -317,10 +324,13 @@
 
             </div>
 
-            <div class="d-flex justify-content-between mt-3">
-                <a href="javascript:;" id="deleteAll"></a>
-                <a href="javascript:;" id="saveDraft"></a>
-
+            <div class="d-flex justify-content-between mt-3 gap-2" id="cartActionBar" style="display:none !important;">
+                <button type="button" id="saveDraft" class="btn btn-outline-primary btn-sm flex-fill">
+                    <i class="ti ti-device-floppy"></i> Pending
+                </button>
+                <button type="button" id="deleteAll" class="btn btn-outline-danger btn-sm flex-fill">
+                    <i class="ti ti-trash"></i> Hapus
+                </button>
             </div>
             <div class="card mt-5 ">
                 <div class="card-body shadow-sm">
@@ -434,11 +444,14 @@
                         <!-- CASH SECTION -->
                         <div id="cashSection" style="display: none;">
                             <label class="form-label">Jumlah Uang Diberikan</label>
-                            {{-- <input type="text" name="amount_given" id="amountGiven" class="form-control "
-                                 min="0" /> --}}
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">Rp</span>
+                                <input type="text" id="amountGivenDisplay"
+                                    class="form-control form-control-lg fw-bold" placeholder="0" />
+                            </div>
+                            <input type="hidden" name="amount_given" id="amountGiven" />
 
                             <div id="cashOptions" class="d-flex flex-wrap gap-2 mb-2 justify-content-beetween"></div>
-                            <input type="hidden" name="amount_given" id="amountGiven" />
 
                             <div class="mt-2 text-muted">
                                 <h2>Kembalian: <strong id="kembalianText">Rp 0</strong></h2>
@@ -502,11 +515,40 @@
         </div>
     </div>
 
+    {{-- ═════════════════════════════════════════════
+         Pending Transactions Modal
+         ═══════════════════════════════════════════ --}}
+    <div class="modal fade" id="pendingTxModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ti ti-clock-pause me-2 text-warning"></i>Transaksi Pending</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="pendingTxBody">
+                    <div class="text-center py-4 text-muted">
+                        <i class="ti ti-loader ti-spin ti-2x"></i>
+                        <p class="mt-2">Memuat data...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 @section('script')
     <script>
         document.documentElement.classList.add('layout-menu-collapsed');
         const orderList = [];
+        try {
+            const savedCart = localStorage.getItem('pos_cart_v2');
+            if (savedCart) {
+                const parsed = JSON.parse(savedCart);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach(item => orderList.push(item));
+                }
+            }
+        } catch (e) {}
 
 
         const qtyInput = document.getElementById('ticketQtyInput');
@@ -518,15 +560,14 @@
         const ticketList = document.getElementById('ticketList');
         const orderListContainer = document.getElementById("orderList");
         const orderTotal = document.getElementById('orderTotal');
+        const paymentTotal = document.getElementById('paymentTotal'); // shared with payment script block
         const deleteAllLink = document.getElementById('deleteAll');
-        const saveDraft = document.getElementById('saveDraft');
+        const saveDraftBtn = document.getElementById('saveDraft');
+        const cartActionBar = document.getElementById('cartActionBar');
         const searchInput = document.getElementById('ticketSearch');
         let selectedTicket = null;
-        let selectedDraftTicket = null;
+        let selectedDraftTicket = null; // holds pending transaction ID if editing one
         const ticket = @json($combined);
-
-        const draftList = document.getElementById('draftList');
-        let draft = @json($draft);
 
         const freeListContainer = document.getElementById('freeList');
         const freeList = [];
@@ -586,17 +627,6 @@
 
 
         }
-
-        const draftComponent = (r) => {
-
-
-            return `<div class="draft-item p-3 border rounded shadow-sm small " data-id="${r.id}">
-                <div class="fw-bold text-primary mb-2">Order : ${r.transaction_code}</div>
-                <div><span class="text-muted">Total Item: </span>${r.total_item} </div>
-                <div><span class="text-muted">Time:</span> ${r. created_at}</div>
-            </div>`;
-        }
-
 
         btnPlus.addEventListener("click", () => {
             qtyInput.value = parseInt(qtyInput.value) + 1;
@@ -688,13 +718,10 @@
         const renderOrderList = () => {
             checkFreeGift();
 
-
             orderListContainer.innerHTML = '';
 
             let total = 0;
             let count = 0;
-
-            // console.log(orderList);
 
             orderList.forEach(item => {
                 orderListContainer.insertAdjacentHTML('beforeend', orderComponent(item));
@@ -702,16 +729,18 @@
                 count += 1;
             });
 
-            // Tampilkan total
+            // Update total display
             orderTotal.textContent = formatRupiah(total);
             paymentTotal.value = total;
 
-            // Update teks Delete All
+            // Sync to localStorage
+            localStorage.setItem('pos_cart_v2', JSON.stringify(orderList));
 
-            deleteAllLink.textContent = `Delete All (${count})`;
-            saveDraft.textContent = 'Save Draft';
-            deleteAllLink.style.display = count > 0 ? 'inline' : 'none';
-            saveDraft.style.display = count > 0 ? 'inline' : 'none';
+            // Show/hide cart action bar
+            const hasItems = count > 0;
+            if (cartActionBar) {
+                cartActionBar.style.display = hasItems ? 'flex' : 'none';
+            }
         };
         //  console.log(ticket);
 
@@ -725,50 +754,6 @@
                 ticketList.insertAdjacentHTML('beforeend', html);
             });
         }
-
-        function renderDraftList(data) {
-
-
-            draftList.innerHTML = ''; // hapus semua dulu
-            data.forEach(r => {
-                const html = draftComponent(r);
-                draftList.insertAdjacentHTML('beforeend', html);
-            });
-        }
-        draftList.addEventListener("click", function(e) {
-            const card = e.target.closest('.draft-item');
-            if (!card) return;
-
-            // hilangkan active dari semua draft-item
-            document.querySelectorAll(".draft-item").forEach(el => el.classList.remove("active"));
-
-            // tambahkan active ke item yang diklik
-            card.classList.add("active");
-
-            const id = card.dataset.id;
-            selectedDraftTicket = id;
-            orderList.length = 0;
-            fetch(`/transaction/get-detail/${id}`)
-                .then(response => {
-                    if (!response.ok) throw new Error("Gagal fetch data");
-                    return response.json();
-                })
-                .then(data => {
-
-
-                    data.forEach(item => {
-                        orderList.push(item);
-                    });
-                    renderOrderList();
-
-
-                })
-                .catch(err => {
-                    console.error("Error:", err);
-                });
-
-        });
-
 
         ticketList.addEventListener("click", function(e) {
             const infoEl = e.target.closest('.wahana-info');
@@ -882,38 +867,76 @@
                 }
             }
         });
-        deleteAllLink.addEventListener('click', function(e) {
-            e.preventDefault();
 
-            if (confirm('Yakin ingin menghapus semua item?')) {
-                orderList.length = 0; // kosongkan array
+        // ── "Hapus" button: only clears cart (no server call for non-pending) ──
+        if (deleteAllLink) {
+            deleteAllLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (!confirm('Hapus semua item dari keranjang?')) return;
+                resetCart();
+            });
+        }
 
-                if (selectedDraftTicket != null) {
-                    fetch(`/transaction/delete-draft-transaction/${selectedDraftTicket}`)
-                        .then(response => {
-                            if (!response.ok) throw new Error("Gagal fetch data");
-                            return response.json();
-                        })
-                        .then(res => {
-                            if (res.status === "success") {
-                                window.location.reload();
-                            } else {
-                                alert(res.message || "Gagal hapus draft");
-                            }
-                        })
-                        .catch(err => {
-                            console.error("Error:", err);
+        // ── "Pending" button: save cart via AJAX ────────────────────────────────
+        if (saveDraftBtn) {
+            saveDraftBtn.addEventListener('click', async function() {
+                if (!orderList.length) return;
+                if (!confirm('Simpan transaksi ini sebagai pending?')) return;
+
+                saveDraftBtn.disabled = true;
+                saveDraftBtn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Menyimpan...';
+
+                try {
+                    const csrfToken = '{{ csrf_token() }}';
+                    const payload = {
+                        total: parseFloat(paymentTotal.value),
+                        order_list: JSON.stringify(orderList),
+                        free_rule: JSON.stringify(freeRule),
+                    };
+                    if (selectedDraftTicket) payload.transaction_id = selectedDraftTicket;
+
+                    const res = await fetch('{{ route('transaction.save-draft') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    const data = await res.json();
+                    if (data.status === 'ok') {
+                        localStorage.removeItem('pos_cart_v2');
+                        selectedDraftTicket = null;
+                        orderList.length = 0;
+                        renderOrderList();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Tersimpan!',
+                            text: 'Transaksi disimpan sebagai pending.',
+                            timer: 1500,
+                            showConfirmButton: false
                         });
+                        refreshPendingBadge();
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: data.message
+                        });
+                    }
+                } catch (e) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: e.message
+                    });
+                } finally {
+                    saveDraftBtn.disabled = false;
+                    saveDraftBtn.innerHTML = '<i class="ti ti-device-floppy"></i> Pending';
                 }
-
-
-                renderOrderList(); // render ulang
-
-
-
-
-            }
-        });
+            });
+        }
 
         searchInput.addEventListener('input', function() {
             const keyword = this.value.toLowerCase();
@@ -925,7 +948,139 @@
             renderTicketList(filtered);
         });
         renderTicketList(ticket);
-        renderDraftList(draft);
+        renderOrderList(); // restore cart from localStorage on load
+
+        // ─── Pending Modal helpers ───────────────────────────────────────────────
+
+        function resetCart() {
+            orderList.length = 0;
+            selectedDraftTicket = null;
+            localStorage.removeItem('pos_cart_v2');
+            renderOrderList();
+        }
+
+        async function refreshPendingBadge() {
+            try {
+                const res = await fetch('{{ route('transaction.pending-list') }}');
+                const data = await res.json();
+                const badge = document.getElementById('pendingBadge');
+                if (badge) badge.textContent = data.data?.length ?? 0;
+            } catch (e) {}
+        }
+
+        async function openPendingModal() {
+            const modal = new bootstrap.Modal(document.getElementById('pendingTxModal'));
+            modal.show();
+            const body = document.getElementById('pendingTxBody');
+            body.innerHTML =
+                `<div class="text-center py-4 text-muted"><i class="ti ti-loader ti-spin ti-2x"></i><p class="mt-2">Memuat data...</p></div>`;
+
+            try {
+                const res = await fetch('{{ route('transaction.pending-list') }}');
+                const data = await res.json();
+                if (!data.data?.length) {
+                    body.innerHTML =
+                        `<div class="text-center py-5 text-muted"><i class="ti ti-inbox ti-2x"></i><p class="mt-2">Tidak ada transaksi pending.</p></div>`;
+                    return;
+                }
+                body.innerHTML = data.data.map(t => `
+                    <div class="card mb-2 border" data-pending-id="${t.id}">
+                        <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                            <div>
+                                <div class="fw-bold">${t.transaction_code}</div>
+                                <div class="text-muted small">${t.total_item} item &bull; ${t.created_at}</div>
+                                <div class="fw-bold text-primary">${formatRupiah(t.total_amount)}</div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-primary btn-load-pending" data-id="${t.id}">
+                                    <i class="ti ti-arrow-right"></i> Lanjut
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger btn-cancel-pending" data-id="${t.id}">
+                                    <i class="ti ti-x"></i> Batalkan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Bind buttons
+                body.querySelectorAll('.btn-load-pending').forEach(btn => {
+                    btn.addEventListener('click', () => loadPendingToCart(btn.dataset.id));
+                });
+                body.querySelectorAll('.btn-cancel-pending').forEach(btn => {
+                    btn.addEventListener('click', () => cancelPending(btn.dataset.id, btn));
+                });
+
+            } catch (e) {
+                body.innerHTML = `<div class="alert alert-danger">Gagal memuat data: ${e.message}</div>`;
+            }
+        }
+
+        async function loadPendingToCart(id) {
+            try {
+                const res = await fetch(`/transaction/pending-detail/${id}`);
+                const data = await res.json();
+                if (data.status !== 'ok') throw new Error(data.message);
+
+                // Set cart
+                orderList.length = 0;
+                data.items.forEach(item => orderList.push(item));
+                selectedDraftTicket = data.transaction_id;
+                localStorage.setItem('pos_cart_v2', JSON.stringify(orderList));
+                renderOrderList();
+
+                // Close modal
+                bootstrap.Modal.getInstance(document.getElementById('pendingTxModal'))?.hide();
+            } catch (e) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: e.message
+                });
+            }
+        }
+
+        async function cancelPending(id, btn) {
+            if (!confirm('Yakin batalkan transaksi pending ini?')) return;
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/transaction/delete-draft-transaction/${id}`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    // Remove card from modal
+                    const card = document.querySelector(`[data-pending-id="${id}"]`);
+                    if (card) card.remove();
+
+                    // If currently loaded in cart, reset
+                    if (String(selectedDraftTicket) === String(id)) {
+                        resetCart();
+                    }
+                    refreshPendingBadge();
+                    const body = document.getElementById('pendingTxBody');
+                    if (body && !body.querySelector('[data-pending-id]')) {
+                        body.innerHTML =
+                            `<div class="text-center py-5 text-muted"><i class="ti ti-inbox ti-2x"></i><p class="mt-2">Tidak ada transaksi pending.</p></div>`;
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: data.message
+                    });
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: e.message
+                });
+                btn.disabled = false;
+            }
+        }
+
+        // Load badge count on page load
+        refreshPendingBadge();
     </script>
 
 
@@ -937,8 +1092,33 @@
         const nonCashSection = document.getElementById('nonCashSection');
         const amountGiven = document.getElementById('amountGiven');
         const kembalianText = document.getElementById('kembalianText');
-        const paymentTotal = document.getElementById('paymentTotal');
         const paymentForm = document.getElementById('paymentForm');
+        const amountGivenDisplay = document.getElementById('amountGivenDisplay');
+
+        if (amountGivenDisplay) {
+            amountGivenDisplay.addEventListener('input', function() {
+                let val = this.value.replace(/[^0-9]/g, '');
+                if (val) {
+                    this.value = parseInt(val).toLocaleString('id-ID');
+                    amountGiven.value = val;
+                } else {
+                    this.value = '';
+                    amountGiven.value = '';
+                }
+
+                const totalBayar = parseFloat(paymentTotal.value) || 0;
+                const given = parseFloat(amountGiven.value) || 0;
+                const kembalian = given - totalBayar;
+
+                if (given >= totalBayar) {
+                    kembalianText.textContent = formatRupiah(kembalian);
+                    kembalianText.classList.remove('text-danger');
+                } else {
+                    kembalianText.textContent = 'Rp 0 (Kurang)';
+                    kembalianText.classList.add('text-danger');
+                }
+            });
+        }
 
         const generateCashButtons = (totalBayar) => {
             const cashOptionsDiv = document.getElementById("cashOptions");
@@ -969,12 +1149,15 @@
             jumlahFinal.forEach(jml => {
                 const btn = document.createElement("button");
                 btn.type = "button";
-                btn.className = "btn btn-outline-success";
+                btn.className = "btn btn-outline-success btn-sm fw-bold";
                 btn.textContent = formatRupiah(jml);
                 btn.onclick = () => {
                     document.getElementById("amountGiven").value = jml;
+                    if (amountGivenDisplay) amountGivenDisplay.value = parseInt(jml).toLocaleString(
+                        'id-ID');
                     const kembalian = jml - totalBayar;
                     document.getElementById("kembalianText").textContent = formatRupiah(kembalian);
+                    document.getElementById("kembalianText").classList.remove('text-danger');
                 };
                 cashOptionsDiv.appendChild(btn);
             });
@@ -1074,32 +1257,6 @@
             paymentForm.appendChild(input2);
 
         }
-        saveDraft.addEventListener("click", function() {
-            if (confirm('Yakin ingin menyimpan data ini')) {
-                // hapus input draft lama biar gak duplikat
-                const existingDraft = paymentForm.querySelector('input[name="draft"]');
-                if (existingDraft) existingDraft.remove();
-
-                const draftInput = document.createElement('input');
-                draftInput.type = 'hidden';
-                draftInput.name = 'draft';
-                draftInput.value = 'true';
-                paymentForm.appendChild(draftInput);
-
-
-                if (selectedDraftTicket != null) {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'transaction_id';
-                    input.value = selectedDraftTicket
-                    paymentForm.appendChild(input);
-                }
-                createElementSubmit();
-
-                // submit form
-                paymentForm.submit();
-            }
-        });
 
 
 
@@ -1205,11 +1362,15 @@
                     if (payModal) payModal.hide();
 
                     // Reset semua state ke kondisi awal
+                    if (orderList.length > 0) {
+                        orderListContainer.innerHTML = '';
+                    }
                     orderList.length = 0;
                     selectedDraftTicket = null;
                     freeRule.length = 0;
                     renderOrderList();
                     resetPaymentForm();
+                    if (typeof refreshPendingBadge === 'function') refreshPendingBadge();
 
                     // Load view-partial ke modal
                     await openTransactionViewModal(data.id);
@@ -1242,9 +1403,14 @@
 
             // Reset jumlah uang & kembalian
             const amountGivenEl = document.getElementById('amountGiven');
+            const amountGivenDisplay = document.getElementById('amountGivenDisplay');
             if (amountGivenEl) amountGivenEl.value = '';
+            if (amountGivenDisplay) amountGivenDisplay.value = '';
             const kembalianText = document.getElementById('kembalianText');
-            if (kembalianText) kembalianText.textContent = 'Rp 0';
+            if (kembalianText) {
+                kembalianText.textContent = 'Rp 0';
+                kembalianText.classList.remove('text-danger');
+            }
 
             // Hapus tombol cash options yang di-generate dinamis
             const cashOptions = document.getElementById('cashOptions');

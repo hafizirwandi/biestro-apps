@@ -2,10 +2,7 @@
 @section('title', 'Close Shift')
 @section('css')
     <style>
-        .closing-container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+        /* Fluid container is used instead of constrained closing-container */
 
         .recap-table td {
             padding: 8px 12px;
@@ -45,128 +42,148 @@
     @include('transaction.partials._ticket-sold-modal')
     @include('transaction.partials._wahana-sold-modal')
 
-    <div class="d-flex gap-2 mb-3 flex-wrap">
-        <a class="btn btn-outline-secondary" href="{{ route('transaction.sales-revenue') }}">
-            <i class="fas fa-arrow-left me-1"></i> Back to Sales
-        </a>
-    </div>
 
-    <div class="closing-container pb-5">
-        <div class="alert alert-warning mb-4">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            Setelah shift ditutup, shift baru hanya bisa dibuka besok.
-        </div>
+    <div class="row pb-5">
+        <div class="col-md-12">
 
-        <div class="card shadow-sm">
-            <div class="card-header border-bottom">
-                <h5 class="card-title mb-0"><i class="fas fa-lock me-2 text-primary"></i> Tutup Kasir</h5>
-            </div>
-            <div class="card-body bg-light">
-                <div class="row g-3 mb-4">
-                    <div class="col-6 col-md-3">
-                        <label class="form-label text-muted small">Kasir</label>
-                        <p class="fw-bold mb-0">{{ $shift->user->name ?? '-' }}</p>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label text-muted small">Counter</label>
-                        <p class="fw-bold mb-0">{{ $shift->counter->name ?? '-' }}</p>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label text-muted small">Jam Buka</label>
-                        <p class="fw-bold mb-0">
-                            {{ $shift->opened_at ? \Carbon\Carbon::parse($shift->opened_at)->format('d M Y H:i') : '-' }}
-                        </p>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label text-muted small">Jam Tutup (Sekarang)</label>
-                        <p class="fw-bold mb-0" id="current_closed_at">{{ date('d M Y H:i') }}</p>
+            <div class="card shadow-sm border-0">
+                <div class="card-header border-bottom d-flex justify-content-between align-items-center bg-white py-3">
+                    <h5 class="card-title mb-0"><i class="fas fa-lock me-2 text-primary"></i> Tutup Kasir</h5>
+
+                </div>
+                <div class="card-body bg-light p-4">
+                    <div class="row">
+                        {{-- 🟢 LEFT COLUMN: Shift Info & System Balance --}}
+                        <div class="col-md-6 border-end pe-md-4">
+                            <div class="alert alert-warning mb-4 shadow-sm border-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Setelah shift ditutup, shift baru hanya bisa dibuka besok.
+                            </div>
+                            <div class="row g-3 mb-4">
+                                <div class="col-6 col-md-6">
+                                    <label class="form-label text-muted small mb-0">Kasir</label>
+                                    <p class="fw-bold mb-0 text-dark">{{ $shift->user->name ?? '-' }}</p>
+                                </div>
+                                <div class="col-6 col-md-6">
+                                    <label class="form-label text-muted small mb-0">Counter</label>
+                                    <p class="fw-bold mb-0 text-dark">{{ $shift->counter->name ?? '-' }}</p>
+                                </div>
+                                <div class="col-6 col-md-6">
+                                    <label class="form-label text-muted small mb-0">Jam Buka</label>
+                                    <p class="fw-bold mb-0 text-dark">
+                                        {{ $shift->opened_at ? \Carbon\Carbon::parse($shift->opened_at)->format('d M Y H:i') : '-' }}
+                                    </p>
+                                </div>
+                                <div class="col-6 col-md-6">
+                                    <label class="form-label text-muted small mb-0">Jam Tutup (Sekarang)</label>
+                                    <p class="fw-bold mb-0 text-dark" id="current_closed_at">{{ date('d M Y H:i') }}</p>
+                                </div>
+                            </div>
+
+                            <div class="card mb-4 bg-white border-0 shadow-sm">
+                                <div class="card-body p-0">
+                                    <table class="table table-sm table-borderless recap-table mb-0 w-100">
+                                        <tbody>
+                                            <tr class="table-light border-bottom">
+                                                <td>Opening Balance</td>
+                                                <td class="text-end fw-bold">{{ format_rupiah($shift->opening_balance) }}
+                                                </td>
+                                            </tr>
+                                            <tr class="table-light border-bottom">
+                                                <td>System Balance</td>
+                                                <td class="text-end fw-bold text-primary fs-5">
+                                                    {{ format_rupiah($system_balance) }}</td>
+                                            </tr>
+                                            <tr class="table-light border-bottom">
+                                                <td>Total Cash</td>
+                                                <td class="text-end">{{ format_rupiah($totalCash) }}</td>
+                                            </tr>
+                                            <tr class="table-light border-bottom">
+                                                <td>Total Non-Cash</td>
+                                                <td class="text-end">{{ format_rupiah($totalNonCash) }}</td>
+                                            </tr>
+
+                                            @if (count($byMethod))
+                                                <tr class="recap-section-header">
+                                                    <td colspan="2" class="fw-bold small">Non-Cash per Metode</td>
+                                                </tr>
+                                                @foreach ($byMethod as $method => $amount)
+                                                    <tr>
+                                                        <td class="ps-4 small">{{ $method ?: '-' }}</td>
+                                                        <td class="text-end small">{{ format_rupiah($amount) }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            @endif
+
+                                            @if (count($byChannel))
+                                                <tr class="recap-section-header">
+                                                    <td colspan="2" class="fw-bold small">Non-Cash per Channel</td>
+                                                </tr>
+                                                @foreach ($byChannel as $channel => $amount)
+                                                    <tr>
+                                                        <td class="ps-4 small">{{ $channel ?: '-' }}</td>
+                                                        <td class="text-end small">{{ format_rupiah($amount) }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            @endif
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- 🔴 RIGHT COLUMN: Closing Balance Input Form --}}
+                        <div class="col-md-6 ps-md-4">
+                            <form id="closeShiftForm" method="post" action="{{ route('transaction.set-close-shift') }}">
+                                @csrf
+                                <input type="hidden" name="cashier_shift_id" id="cs_shift_id" value="{{ $shift->id }}">
+
+                                <div class="card bg-white border-0 shadow-sm">
+                                    <div class="card-body p-4">
+                                        <h6 class="fw-bold text-primary mb-3">Input Aktual Fisik</h6>
+
+                                        <div class="mb-4">
+                                            <label class="form-label fw-bold">Closing Balance Fisik Kasir <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="text" id="cs_closing_balance" name="closing_balance"
+                                                class="form-control form-control-lg text-primary fw-bold" placeholder="0"
+                                                required />
+                                            <small class="text-muted"><i class="ti ti-info-circle me-1"></i>Masukkan jumlah
+                                                fisik uang cash yang ada di laci saat ini.</small>
+                                        </div>
+
+                                        <div class="row g-3 mb-4">
+                                            <div class="col-6">
+                                                <label class="form-label fw-bold">Selisih (Difference)</label>
+                                                <input type="text" id="cs_difference" name="difference"
+                                                    class="form-control form-control-lg bg-light" readonly />
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label fw-bold">Status Balance</label>
+                                                <input type="text" id="cs_status_balance"
+                                                    class="form-control form-control-lg bg-light" readonly
+                                                    placeholder="Auto" />
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label class="form-label fw-bold">Notes / Catatan</label>
+                                            <textarea id="cs_notes" name="notes" class="form-control" rows="3"
+                                                placeholder="Tulis alasan jika surplus/defisit, atau catatan pergantian shift..."></textarea>
+                                        </div>
+
+                                        <div class="mt-4">
+                                            <button type="button" class="btn btn-danger btn-lg w-100 shadow-sm py-3"
+                                                id="btnDoCloseShift">
+                                                <i class="fas fa-print me-2"></i> Tutup Shift & Cetak Rekap
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
-
-                <div class="card mb-4 bg-white border-0 shadow-sm">
-                    <div class="card-body p-0">
-                        <table class="table table-sm table-borderless recap-table mb-0 w-100">
-                            <tbody>
-                                <tr class="table-light border-bottom">
-                                    <td>Opening Balance</td>
-                                    <td class="text-end fw-bold">{{ format_rupiah($shift->opening_balance) }}</td>
-                                </tr>
-                                <tr class="table-light border-bottom">
-                                    <td>System Balance</td>
-                                    <td class="text-end fw-bold text-primary">{{ format_rupiah($system_balance) }}</td>
-                                </tr>
-                                <tr class="table-light border-bottom">
-                                    <td>Total Cash</td>
-                                    <td class="text-end">{{ format_rupiah($totalCash) }}</td>
-                                </tr>
-                                <tr class="table-light border-bottom">
-                                    <td>Total Non-Cash</td>
-                                    <td class="text-end">{{ format_rupiah($totalNonCash) }}</td>
-                                </tr>
-
-                                @if (count($byMethod))
-                                    <tr class="recap-section-header">
-                                        <td colspan="2" class="fw-bold small">Non-Cash per Metode</td>
-                                    </tr>
-                                    @foreach ($byMethod as $method => $amount)
-                                        <tr>
-                                            <td class="ps-4 small">{{ $method ?: '-' }}</td>
-                                            <td class="text-end small">{{ format_rupiah($amount) }}</td>
-                                        </tr>
-                                    @endforeach
-                                @endif
-
-                                @if (count($byChannel))
-                                    <tr class="recap-section-header">
-                                        <td colspan="2" class="fw-bold small">Non-Cash per Channel</td>
-                                    </tr>
-                                    @foreach ($byChannel as $channel => $amount)
-                                        <tr>
-                                            <td class="ps-4 small">{{ $channel ?: '-' }}</td>
-                                            <td class="text-end small">{{ format_rupiah($amount) }}</td>
-                                        </tr>
-                                    @endforeach
-                                @endif
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <form id="closeShiftForm" method="post" action="{{ route('transaction.set-close-shift') }}">
-                    @csrf
-                    <input type="hidden" name="cashier_shift_id" id="cs_shift_id" value="{{ $shift->id }}">
-
-                    <div class="row g-4">
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Closing Balance <span class="text-danger">*</span></label>
-                            <input type="text" id="cs_closing_balance" name="closing_balance"
-                                class="form-control form-control-lg text-primary" placeholder="0" required />
-                            <small class="text-muted">Masukkan uang fisik yang ada di laci.</small>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Difference</label>
-                            <input type="text" id="cs_difference" name="difference"
-                                class="form-control form-control-lg bg-light" readonly />
-                            <small class="text-muted">Closing dikurang System Balance.</small>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Status Balance</label>
-                            <input type="text" id="cs_status_balance" class="form-control form-control-lg bg-light"
-                                readonly placeholder="Auto" />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold">Notes / Catatan Singkat</label>
-                            <textarea id="cs_notes" name="notes" class="form-control" rows="2"
-                                placeholder="Catatan opsional (mis. alasan defisit/surplus)..."></textarea>
-                        </div>
-                    </div>
-
-                    <div class="my-4">
-                        <button type="button" class="btn btn-danger btn-lg w-100 shadow-sm" id="btnDoCloseShift">
-                            <i class="fas fa-print me-2"></i> Tutup Shift & Cetak Rekap
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>

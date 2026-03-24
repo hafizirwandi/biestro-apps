@@ -253,6 +253,9 @@ Route::middleware('auth:web')->group(function () {
             Route::get('/reprint-receipt', [TransactionController::class, 'reprintReceipt'])->name('transaction.reprint-receipt');
             Route::get('/close', [TransactionController::class, 'close'])->name('transaction.close');
             Route::get('/delete-draft-transaction/{id}', [TransactionController::class, 'deleteDraftTransaction'])->name('transaction.delete-draft-transaction');
+            Route::post('/save-draft', [TransactionController::class, 'saveDraft'])->name('transaction.save-draft');
+            Route::get('/pending-list', [TransactionController::class, 'pendingList'])->name('transaction.pending-list');
+            Route::get('/pending-detail/{id}', [TransactionController::class, 'pendingDetail'])->name('transaction.pending-detail');
 
             Route::post('/set-open-shift', [TransactionController::class, 'setOpenShift'])->name('transaction.set-open-shift');
             Route::post('/set-open-shift', [TransactionController::class, 'setOpenShift'])->name('transaction.set-open-shift');
