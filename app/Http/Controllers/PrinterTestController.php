@@ -58,6 +58,7 @@ class PrinterTestController extends Controller
             'payment_type' => $transaction->payment_type,
             'items' => $items,
             'total' => $transaction->total_amount,
+            'is_copy' => $transaction->bill_count_print > 0,
         ]);
     }
 
@@ -76,6 +77,7 @@ class PrinterTestController extends Controller
             'wahana_key' => $ticket->wahana?->key ?? '',
             'ticket_code' => $ticket->ticket_code,
             'created_at' => $ticket->created_at?->format('d/m/Y H:i'),
+            'is_copy' => $ticket->count_print > 0,
         ]);
     }
 
@@ -101,6 +103,7 @@ class PrinterTestController extends Controller
                 'ticket_code' => $t->ticket_code,
                 'created_at' => $t->created_at?->format('d/m/Y H:i'),
                 'count_print' => $t->count_print,
+                'is_copy' => $t->count_print > 0,
             ],
         );
 

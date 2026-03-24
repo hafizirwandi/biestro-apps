@@ -147,8 +147,15 @@
                     <span class="fw-bold">{{ format_rupiah($data->total_amount) }}</span>
                 </div>
             </div>
-            <button onclick="printBill(`{{ $data->id }}`)" class="btn btn-primary w-100 mt-3" id="btnPrintBill">
-                <i class="fas fa-print me-1"></i> Print Bill
+            @php $isBillPrinted = $data->bill_count_print > 0; @endphp
+            <button onclick="printBill(`{{ $data->id }}`)"
+                class="btn btn-primary w-100 mt-3 {{ $isBillPrinted ? 'disabled' : '' }}" id="btnPrintBill"
+                {{ $isBillPrinted ? 'disabled' : '' }}>
+                @if ($isBillPrinted)
+                    <i class="fas fa-check me-1"></i> Sudah Dicetak
+                @else
+                    <i class="fas fa-print me-1"></i> Print Bill
+                @endif
             </button>
 
         </div>
@@ -205,18 +212,23 @@
         // Connect Printer button helpers
         // ─────────────────────────────────────────────────────
         function updateConnectBtn() {
-            const btn = document.getElementById('btnConnectBT');
-            const label = document.getElementById('btnConnectBTLabel');
-            if (!btn) return;
-            if (window.BTPrinter?.isConnected) {
-                btn.classList.remove('btn-outline-secondary');
-                btn.classList.add('btn-outline-success');
-                label.textContent = 'Printer Connected ✓';
-            } else {
-                btn.classList.remove('btn-outline-success');
-                btn.classList.add('btn-outline-secondary');
-                label.textContent = 'Connect Printer';
-            }
+            const btns = document.querySelectorAll('#btnConnectBT, .btnConnectBT');
+            btns.forEach(btn => {
+                const label = btn.querySelector('#btnConnectBTLabel, .btnConnectBTLabel') || btn.nextElementSibling;
+                const dot = btn.querySelector('#printerDot, .printerDot');
+
+                if (window.BTPrinter?.isConnected) {
+                    btn.classList.remove('btn-outline-secondary');
+                    btn.classList.add('btn-outline-success', 'connected');
+                    if (dot) dot.classList.add('connected');
+                    if (label) label.textContent = 'Printer Connected ✓';
+                } else {
+                    btn.classList.remove('btn-outline-success', 'connected');
+                    btn.classList.add('btn-outline-secondary');
+                    if (dot) dot.classList.remove('connected');
+                    if (label) label.textContent = 'Connect Printer';
+                }
+            });
         }
 
         async function connectBTPrinter() {
@@ -227,15 +239,18 @@
 
             try {
                 // Try silent reconnect first (uses getDevices + retry, no popup)
-                await window.BTPrinter.connectOrReconnect();
+                const connected = await window.BTPrinter.connectOrReconnect();
                 btn.disabled = false;
                 updateConnectBtn();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Printer terhubung!',
-                    timer: 1200,
-                    showConfirmButton: false
-                });
+
+                if (connected) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Printer terhubung!',
+                        timer: 1200,
+                        showConfirmButton: false
+                    });
+                }
             } catch (e) {
                 // Silent reconnect failed after all retries.
                 // Ask user if they want to open scan popup to re-pair.
@@ -367,6 +382,13 @@
                             row.querySelectorAll('.fw-bold, .text-muted').forEach(e => e.classList.add('ticket-used'));
                             el.classList.add('ticket-used');
                         }
+
+                        // Disable Print All Ticket btn if no more active tickets
+                        const activeTickets = document.querySelectorAll('.btn-remove-order:not(.ticket-used)');
+                        if (activeTickets.length === 0) {
+                            const btnAll = document.getElementById('btnPrintTicketAll');
+                            if (btnAll) btnAll.disabled = true;
+                        }
                     }
                     Swal.fire({
                         icon: 'success',
@@ -478,33 +500,94 @@
         // ────────────────────────────────────────────────────
         function confirmRePrint(id) {
             Swal.fire({
-                title: "Supervisor Approval",
-                text: "Masukkan kode supervisor untuk reprint",
+                title: 'Supervisor Approval',
+                html: '<p class="mb-0">Masukkan PIN Supervisor untuk mencetak kembali tiket ini.</p>',
+                target: document.getElementById('transactionViewModal') || document.body,
                 input: 'password',
                 inputAttributes: {
                     autocapitalize: 'off',
-                    placeholder: 'Kode Supervisor'
-                },
-                showCancelButton: true,
-                confirmButtonText: "Reprint",
-                cancelButtonText: "Batal",
-                showLoaderOnConfirm: true,
-                preConfirm: (password) => {
-                    if (!password) {
-                        Swal.showValidationMessage("Kode supervisor wajib diisi");
-                        return false;
-                    }
-                    document.getElementById(`spv-code-${id}`).value = password;
-                    return true;
+                    placeholder: 'PIN Password (4–6 digit)',
+                    minlength: '4',
+                    maxlength: '6'
                 },
                 customClass: {
-                    confirmButton: 'btn btn-primary me-2',
-                    cancelButton: 'btn btn-secondary'
+                    confirmButton: 'btn btn-primary waves-effect waves-light me-2',
+                    cancelButton: 'btn btn-outline-secondary'
                 },
-                buttonsStyling: false
+                buttonsStyling: false,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-print me-1"></i> Reprint',
+                cancelButtonText: 'Batal',
+                showLoaderOnConfirm: true,
+                preConfirm: async (password) => {
+                    if (!password) {
+                        Swal.showValidationMessage('PIN wajib diisi');
+                        return false;
+                    }
+                    if (password.length < 4 || password.length > 6) {
+                        Swal.showValidationMessage('PIN harus 4–6 karakter');
+                        return false;
+                    }
+
+                    try {
+                        const res = await fetch('{{ route('transaction.reprint') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                id: id,
+                                spv_code: password
+                            })
+                        });
+                        const data = await res.json();
+
+                        if (res.ok && data.status === 'success') {
+                            return data;
+                        } else {
+                            Swal.showValidationMessage(data.message || 'Gagal mereset tiket');
+                            return false;
+                        }
+                    } catch (e) {
+                        Swal.showValidationMessage('Terjadi kesalahan jaringan');
+                        return false;
+                    }
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    document.getElementById(`reprint-form-${id}`).submit();
+                    // Unflag everything in UI
+                    document.querySelectorAll('.order-item').forEach(row => {
+                        row.querySelectorAll('.ticket-used').forEach(e => e.classList.remove(
+                            'ticket-used'));
+                    });
+
+                    // Re-enable Print All Ticket button
+                    const btnAll = document.getElementById('btnPrintTicketAll');
+                    if (btnAll) btnAll.disabled = false;
+
+                    // Re-enable Print Bill button
+                    const btnBill = document.getElementById('btnPrintBill');
+                    if (btnBill) {
+                        btnBill.disabled = false;
+                        btnBill.className = 'btn btn-primary w-100 mt-3';
+                        btnBill.innerHTML = '<i class="fas fa-print me-1"></i> Print Bill';
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Siap Cetak Ulang',
+                        text: 'Silakan cetak kembali tiket atau struk.',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        target: document.getElementById('transactionViewModal') || document.body,
+                        customClass: {
+                            confirmButton: 'btn btn-primary'
+                        },
+                        buttonsStyling: false
+                    });
                 }
             });
         }

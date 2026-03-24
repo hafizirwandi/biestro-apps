@@ -62,8 +62,6 @@ if (!function_exists('statusGeneral')) {
             case 0:
                 return '<span class="badge bg-label-secondary" text-capitalized="">Pending</span>';
 
-
-
             default:
                 return '';
         }
@@ -98,7 +96,6 @@ if (!function_exists('uploadAndReadExcel')) {
         return $rows;
     }
 }
-
 
 if (!function_exists('encryptText')) {
     function encryptText($plainText, $key)
@@ -184,7 +181,6 @@ function setting_field()
             'name' => 'logo',
             'open_fm' => true,
             'mod' => 'setting',
-
         ],
         [
             'label' => 'favicon',
@@ -196,11 +192,11 @@ function setting_field()
         [
             'label' => 'Connector Type',
             'type' => 'select',
-            'options' => array(
+            'options' => [
                 'windows' => 'Windows',
                 'cups' => 'Mac and Linux',
-                'netword' => 'Network'
-            ),
+                'netword' => 'Network',
+            ],
             'name' => 'connector_type',
             'mod' => 'printer configuration',
         ],
@@ -264,21 +260,13 @@ function setting_field()
         [
             'label' => 'Show Barcode',
             'type' => 'select',
-            'options' => array(
+            'options' => [
                 '1' => 'Ya',
                 '0' => 'No',
-            ),
+            ],
             'name' => 'show_barcode',
             'mod' => 'component ticket',
         ],
-
-        [
-            'label' => 'Spv Approval',
-            'type' => 'password',
-            'name' => 'spv_approve',
-            'mod' => 'SPV Approval',
-        ],
-
     ];
 }
 

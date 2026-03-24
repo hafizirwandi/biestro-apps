@@ -248,6 +248,8 @@ Route::middleware('auth:web')->group(function () {
             Route::get('/open-shift', [TransactionController::class, 'openShift'])->name('transaction.open-shift');
             Route::get('/close-shift', [TransactionController::class, 'closeShift'])->name('transaction.close-shift');
             Route::get('/sales-revenue', [TransactionController::class, 'salesRevenue'])->name('transaction.sales-revenue');
+            Route::get('/ticket-sold', [TransactionController::class, 'ticketSold'])->name('transaction.ticket-sold');
+            Route::get('/wahana-sold', [TransactionController::class, 'wahanaSold'])->name('transaction.wahana-sold');
             Route::get('/reprint-receipt', [TransactionController::class, 'reprintReceipt'])->name('transaction.reprint-receipt');
             Route::get('/close', [TransactionController::class, 'close'])->name('transaction.close');
             Route::get('/delete-draft-transaction/{id}', [TransactionController::class, 'deleteDraftTransaction'])->name('transaction.delete-draft-transaction');
@@ -256,6 +258,7 @@ Route::middleware('auth:web')->group(function () {
             Route::post('/set-open-shift', [TransactionController::class, 'setOpenShift'])->name('transaction.set-open-shift');
             Route::post('/set-close-shift', [TransactionController::class, 'setCloseShift'])->name('transaction.set-close-shift');
             Route::post('/reprint', [TransactionController::class, 'reprint'])->name('transaction.reprint');
+            Route::post('/void', [TransactionController::class, 'voidTransaction'])->name('transaction.void');
             Route::get('/shift-data', [TransactionController::class, 'getShiftData'])->name('transaction.shift-data');
         });
 

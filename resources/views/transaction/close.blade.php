@@ -342,7 +342,7 @@
                 if (window.BTPrinter) {
                     const connected = await window.BTPrinter.connectOrReconnect().catch(() => false);
                     if (connected) {
-                        const bytes = buildShiftReceiptBytes(shiftRecapData);
+                        const bytes = window.BTPrinter.buildShiftRecap(shiftRecapData);
                         await window.BTPrinter.sendData(bytes);
                         Swal.fire({
                             icon: 'success',
@@ -362,40 +362,6 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-print me-2"></i>Cetak Rekap Shift';
             }
-        }
-
-        function buildShiftReceiptBytes(d) {
-            const pad32 = (l, r) => {
-                const rs = String(r);
-                return String(l).padEnd(32 - rs.length) + rs;
-            };
-            const center = (t) => String(t).padStart(Math.floor((32 + String(t).length) / 2)).padEnd(32);
-            const div = '--------------------------------';
-            const lines = [
-                center('REKAP SHIFT'), div,
-                pad32('Kasir:', d.cashier), pad32('Counter:', d.counter),
-                pad32('Jam Buka:', d.opened_at), pad32('Jam Tutup:', d.closed_at), div,
-                pad32('Opening Balance:', formatRupiah(d.opening_balance)),
-                pad32('System Balance:', formatRupiah(d.system_balance)),
-                pad32('Closing Balance:', formatRupiah(d.closing_balance)),
-                pad32('Difference:', formatRupiah(d.difference)),
-                pad32('Status:', d.status_balance), div,
-                pad32('Total Cash:', formatRupiah(d.total_cash)),
-                pad32('Total Non-Cash:', formatRupiah(d.total_noncash)),
-                pad32('Grand Total:', formatRupiah(d.grand_total)),
-            ];
-            if (Object.keys(d.by_method).length) {
-                lines.push(div, 'Non-Cash per Metode:');
-                Object.entries(d.by_method).forEach(([k, v]) => lines.push(pad32('  ' + (k || '-') + ':', formatRupiah(
-                    v))));
-            }
-            if (Object.keys(d.by_channel).length) {
-                lines.push(div, 'Non-Cash per Channel:');
-                Object.entries(d.by_channel).forEach(([k, v]) => lines.push(pad32('  ' + (k || '-') + ':', formatRupiah(
-                    v))));
-            }
-            lines.push(div, center('- TERIMA KASIH -'), '', '', '');
-            return new TextEncoder().encode(lines.join('\n'));
         }
 
         function printShiftRecapWindow(d) {

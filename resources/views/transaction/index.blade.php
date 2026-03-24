@@ -273,45 +273,10 @@
 @endsection
 @section('content')
 
-    {{-- ░░ Session Header Bar ░░ --}}
-    <div class="pos-session-bar">
-        <div class="session-info">
-            <div class="session-item">
-                <span class="label">Kasir</span>
-                <span class="value">{{ auth()->user()->name }}</span>
-            </div>
-            <div class="divider"></div>
-            <div class="session-item">
-                <span class="label">Counter</span>
-                <span class="value">{{ $shift->counter->name ?? '-' }}</span>
-            </div>
-            <div class="divider"></div>
-            <div class="session-item">
-                <span class="label">Buka Shift</span>
-                <span class="value">{{ \Carbon\Carbon::parse($shift->opened_at)->format('H:i') }}</span>
-            </div>
-            <div class="divider"></div>
-            <div class="session-item">
-                <span class="label">Tanggal</span>
-                <span class="value">{{ \Carbon\Carbon::parse($shift->opened_at)->format('d M Y') }}</span>
-            </div>
-            <div class="divider"></div>
-            <div class="session-item">
-                <span class="label">Status</span>
-                <span class="value">
-                    <span class="badge {{ $shift->status === 'open' ? 'bg-success' : 'bg-secondary' }}">
-                        {{ ucfirst($shift->status) }}
-                    </span>
-                </span>
-            </div>
-        </div>
-        <button class="btn-printer" id="btnConnectBT" onclick="connectBTPrinter()">
-            <span class="printer-dot" id="printerDot"></span>
-            <i class="fas fa-print"></i>
-            <span id="btnConnectBTLabel">Connect Printer</span>
-        </button>
-    </div>
-
+    {{-- ░░ Session Header Bar (component) ░░ --}}
+    @include('transaction.partials._session-bar', ['shift' => $shift, 'pageContext' => 'index'])
+    @include('transaction.partials._ticket-sold-modal')
+    @include('transaction.partials._wahana-sold-modal')
     <div class="d-flex flex-wrap gap-3 mb-4" id="draftList"></div>
 
     <div class="row">
@@ -324,37 +289,12 @@
 
                 </div>
             </div>
-            <hr>
-            <div class="row mt-4 text-center menu">
-                <div class="col-6 col-md-3 mb-3" id="voucher-list">
-                    <button class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center">
-                        <i class="fas fa-ticket-alt fa-lg mb-2"></i>
-                        <span>Voucher List</span>
-                    </button>
-                </div>
-
-                <div class="col-6 col-md-3 mb-3" id="sales-revenue">
-                    <button class="btn btn-outline-success w-100 py-3 d-flex flex-column align-items-center">
-                        <i class="fas fa-chart-line fa-lg mb-2"></i>
-                        <span>Sales Revenue</span>
-                    </button>
-                </div>
-
-                <div class="col-6 col-md-3 mb-3" id="cashier-closing">
-                    <button class="btn btn-outline-danger w-100 py-3 d-flex flex-column align-items-center">
-                        <i class="fas fa-cash-register fa-lg mb-2"></i>
-                        <span>Cashier Closing</span>
-                    </button>
-                </div>
-
-                <div class="col-6 col-md-3 mb-3" id="logout-btn">
-                    <a href="{{ route('logout') }}"
-                        class="btn btn-outline-secondary w-100 py-3 d-flex flex-column align-items-center">
-                        <i class="fas fa-sign-out-alt fa-lg mb-2"></i>
-                        <span>Logout</span>
-                    </a>
-                </div>
-
+            {{-- Hidden trigger elements for JS event listeners (moved to dropdown) --}}
+            <div style="display:none;">
+                <div id="voucher-list"></div>
+                <div id="sales-revenue"></div>
+                <div id="cashier-closing"></div>
+                <div id="ticket-sold-btn"></div>
             </div>
 
         </div>
@@ -471,6 +411,7 @@
         </div>
     </div>
 
+
     <form action="{{ route('transaction.store') }}" method="POST" id="paymentForm">
         @csrf
         <div class="modal fade" id="paymentModal" tabindex="-1">
@@ -535,8 +476,7 @@
     {{-- ═══════════════════════════════════════════════════════════
          Transaction View Modal  (static — closes only via button)
          ═══════════════════════════════════════════════════════ --}}
-    <div class="modal fade" id="transactionViewModal" tabindex="-1" data-bs-backdrop="static"
-        data-bs-keyboard="false">
+    <div class="modal fade" id="transactionViewModal" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
@@ -556,32 +496,6 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times me-1"></i> Tutup
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- ═══════════════════════════════════════════════════════════
-         Close Shift Modal
-         ═══════════════════════════════════════════════════════ --}}
-    <div class="modal fade" id="closeShiftModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title"><i class="fas fa-cash-register me-2"></i>Close Shift</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="closeShiftModalBody">
-                    <div class="text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
-                        <p class="mt-2 text-muted">Memuat data shift...</p>
-                    </div>
-                </div>
-                <div class="modal-footer" id="closeShiftModalFooter" style="display:none;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-danger" id="btnDoCloseShift">
-                        <i class="fas fa-lock me-1"></i>Close Shift
                     </button>
                 </div>
             </div>
@@ -1197,7 +1111,7 @@
         });
 
         document.getElementById('cashier-closing').addEventListener("click", function() {
-            openCloseShiftModal();
+            window.location.href = "{{ route('transaction.close-shift') }}";
         });
         document.getElementById('sales-revenue').addEventListener("click", function() {
             window.open("{{ route('transaction.sales-revenue') }}", '_blank');
@@ -1383,27 +1297,23 @@
         // Connect Printer helpers (shared: used by partial too)
         // ─────────────────────────────────────────────────────────────
         function updateConnectBtn() {
-            const btn = document.getElementById('btnConnectBT');
-            const label = document.getElementById('btnConnectBTLabel');
-            const dot = document.getElementById('printerDot');
-            if (!btn) return;
-            if (window.BTPrinter?.isConnected) {
-                // legacy modal button (if still exists)
-                btn.classList.replace('btn-outline-secondary', 'btn-outline-success');
-                // session bar button
-                btn.classList.add('connected');
-                if (dot) {
-                    dot.classList.add('connected');
+            const btns = document.querySelectorAll('#btnConnectBT, .btnConnectBT');
+            btns.forEach(btn => {
+                const label = btn.querySelector('#btnConnectBTLabel, .btnConnectBTLabel') || btn.nextElementSibling;
+                const dot = btn.querySelector('#printerDot, .printerDot');
+
+                if (window.BTPrinter?.isConnected) {
+                    btn.classList.remove('btn-outline-secondary');
+                    btn.classList.add('btn-outline-success', 'connected');
+                    if (dot) dot.classList.add('connected');
+                    if (label) label.textContent = 'Printer Connected ✓';
+                } else {
+                    btn.classList.remove('btn-outline-success', 'connected');
+                    btn.classList.add('btn-outline-secondary');
+                    if (dot) dot.classList.remove('connected');
+                    if (label) label.textContent = 'Connect Printer';
                 }
-                label.textContent = 'Printer Connected ✓';
-            } else {
-                btn.classList.replace('btn-outline-success', 'btn-outline-secondary');
-                btn.classList.remove('connected');
-                if (dot) {
-                    dot.classList.remove('connected');
-                }
-                label.textContent = 'Connect Printer';
-            }
+            });
         }
 
         async function connectBTPrinter() {
@@ -1561,6 +1471,13 @@
                             row.querySelectorAll('.fw-bold, .text-muted').forEach(e => e.classList.add('ticket-used'));
                             el.classList.add('ticket-used');
                         }
+
+                        // Disable Print All Ticket btn if no more active tickets
+                        const activeTickets = document.querySelectorAll('.btn-remove-order:not(.ticket-used)');
+                        if (activeTickets.length === 0) {
+                            const btnAll = document.getElementById('btnPrintTicketAll');
+                            if (btnAll) btnAll.disabled = true;
+                        }
                     }
                     Swal.fire({
                         icon: 'success',
@@ -1672,410 +1589,95 @@
         function confirmRePrint(id) {
             Swal.fire({
                 title: 'Supervisor Approval',
-                text: 'Masukkan kode supervisor untuk reprint',
+                html: '<p class="mb-0">Masukkan PIN Supervisor untuk mencetak kembali tiket ini.</p>',
+                target: document.getElementById('transactionViewModal') || document.body,
                 input: 'password',
                 inputAttributes: {
                     autocapitalize: 'off',
-                    placeholder: 'Kode Supervisor'
+                    placeholder: 'PIN Password (4–6 digit)',
+                    minlength: '4',
+                    maxlength: '6'
                 },
                 customClass: {
-                    confirmButton: 'btn btn-primary waves-effect waves-light'
+                    confirmButton: 'btn btn-primary waves-effect waves-light me-2',
+                    cancelButton: 'btn btn-outline-secondary'
                 },
                 buttonsStyling: false,
+                focusConfirm: false,
                 showCancelButton: true,
-                confirmButtonText: 'Reprint',
+                confirmButtonText: '<i class="fas fa-print me-1"></i> Reprint',
                 cancelButtonText: 'Batal',
                 showLoaderOnConfirm: true,
-                preConfirm: (password) => {
+                preConfirm: async (password) => {
                     if (!password) {
-                        Swal.showValidationMessage('Kode supervisor wajib diisi');
+                        Swal.showValidationMessage('PIN wajib diisi');
                         return false;
                     }
-                    const form = document.getElementById(`reprint-form-${id}`);
-                    document.getElementById(`spv-code-${id}`).value = password;
-                    form.submit();
+                    if (password.length < 4 || password.length > 6) {
+                        Swal.showValidationMessage('PIN harus 4–6 karakter');
+                        return false;
+                    }
+
+                    try {
+                        const res = await fetch('{{ route('transaction.reprint') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                id: id,
+                                spv_code: password
+                            })
+                        });
+                        const data = await res.json();
+
+                        if (res.ok && data.status === 'success') {
+                            return data;
+                        } else {
+                            Swal.showValidationMessage(data.message || 'Gagal mereset tiket');
+                            return false;
+                        }
+                    } catch (e) {
+                        Swal.showValidationMessage('Terjadi kesalahan jaringan');
+                        return false;
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Unflag everything in UI
+                    document.querySelectorAll('.order-item').forEach(row => {
+                        row.querySelectorAll('.ticket-used').forEach(e => e.classList.remove(
+                            'ticket-used'));
+                    });
+
+                    // Re-enable Print All Ticket button
+                    const btnAll = document.getElementById('btnPrintTicketAll');
+                    if (btnAll) btnAll.disabled = false;
+
+                    // Re-enable Print Bill button
+                    const btnBill = document.getElementById('btnPrintBill');
+                    if (btnBill) {
+                        btnBill.disabled = false;
+                        btnBill.className = 'btn btn-primary w-100 mt-3';
+                        btnBill.innerHTML = '<i class="fas fa-print me-1"></i> Print Bill';
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Siap Cetak Ulang',
+                        text: 'Silakan cetak kembali tiket atau struk.',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        target: document.getElementById('transactionViewModal') || document.body,
+                        customClass: {
+                            confirmButton: 'btn btn-primary'
+                        },
+                        buttonsStyling: false
+                    });
                 }
             });
-        }
-    </script>
-
-    <script>
-        // ─────────────────────────────────────────────────────────────
-        // Close Shift Modal Logic
-        // ─────────────────────────────────────────────────────────────
-
-        let _shiftData = null; // cached shift data from AJAX
-
-        async function openCloseShiftModal() {
-            const body = document.getElementById('closeShiftModalBody');
-            const footer = document.getElementById('closeShiftModalFooter');
-            const modal = new bootstrap.Modal(document.getElementById('closeShiftModal'));
-
-            body.innerHTML =
-                '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">Memuat data shift...</p></div>';
-            footer.style.display = 'none';
-            modal.show();
-
-            try {
-                const res = await fetch('{{ route('transaction.shift-data') }}', {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                if (!res.ok) throw new Error('Gagal mengambil data shift.');
-                _shiftData = await res.json();
-
-                const s = _shiftData.shift;
-                const closedAtNow = new Date().toLocaleString('id-ID', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-
-                body.innerHTML = `
-                <div class="alert alert-warning mb-3">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Setelah shift ditutup, shift baru hanya bisa dibuka besok.
-                </div>
-
-                <input type="hidden" id="cs_shift_id" value="${s.id}">
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small">Kasir</label>
-                        <p class="fw-bold mb-0">${s.cashier}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small">Counter</label>
-                        <p class="fw-bold mb-0">${s.counter}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small">Jam Buka</label>
-                        <p class="fw-bold mb-0">${s.opened_at}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small">Jam Tutup (sekarang)</label>
-                        <p class="fw-bold mb-0">${closedAtNow}</p>
-                    </div>
-                </div>
-
-                <table class="table table-sm table-bordered mb-3">
-                    <tbody>
-                        <tr class="table-light"><td>Opening Balance</td><td class="text-end fw-bold">${formatRupiah(s.opening_balance)}</td></tr>
-                        <tr class="table-light"><td>System Balance</td><td class="text-end fw-bold">${formatRupiah(_shiftData.system_balance)}</td></tr>
-                        <tr class="table-light"><td>Total Cash</td><td class="text-end">${formatRupiah(_shiftData.total_cash)}</td></tr>
-                        <tr class="table-light"><td>Total Non-Cash</td><td class="text-end">${formatRupiah(_shiftData.total_noncash)}</td></tr>
-                        ${ Object.keys(_shiftData.by_method).length ?
-                            '<tr class="table-secondary"><td colspan="2" class="fw-bold small">Non-Cash per Metode</td></tr>' +
-                            Object.entries(_shiftData.by_method).map(([k,v]) =>
-                                `<tr><td class="ps-4 small">${k||'-'}</td><td class="text-end small">${formatRupiah(v)}</td></tr>`
-                            ).join('') : '' }
-                        ${ Object.keys(_shiftData.by_channel).length ?
-                            '<tr class="table-secondary"><td colspan="2" class="fw-bold small">Non-Cash per Channel</td></tr>' +
-                            Object.entries(_shiftData.by_channel).map(([k,v]) =>
-                                `<tr><td class="ps-4 small">${k||'-'}</td><td class="text-end small">${formatRupiah(v)}</td></tr>`
-                            ).join('') : '' }
-                    </tbody>
-                </table>
-
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Closing Balance <span class="text-danger">*</span></label>
-                        <input type="text" id="cs_closing_balance" class="form-control" placeholder="0" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Difference</label>
-                        <input type="text" id="cs_difference" class="form-control bg-light" readonly />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Status Balance</label>
-                        <input type="text" id="cs_status_balance" class="form-control bg-light" readonly placeholder="Auto" />
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Notes</label>
-                        <textarea id="cs_notes" class="form-control" rows="2" placeholder="Catatan opsional..."></textarea>
-                    </div>
-                </div>`;
-
-                // Init AutoNumeric on closing balance & difference
-                const closingAN = new AutoNumeric(document.getElementById('cs_closing_balance'), {
-                    digitGroupSeparator: '.',
-                    decimalCharacter: ',',
-                    decimalPlaces: 0,
-                    currencySymbol: 'Rp ',
-                    unformatOnSubmit: true
-                });
-                const diffAN = new AutoNumeric(document.getElementById('cs_difference'), {
-                    digitGroupSeparator: '.',
-                    decimalCharacter: ',',
-                    decimalPlaces: 0,
-                    currencySymbol: 'Rp ',
-                    unformatOnSubmit: true,
-                    readOnly: true
-                });
-
-                document.getElementById('cs_closing_balance').addEventListener('input', function() {
-                    const closing = closingAN.getNumber() || 0;
-                    const system = _shiftData.system_balance;
-                    const diff = closing - system;
-                    diffAN.set(diff);
-                    const el = document.getElementById('cs_status_balance');
-                    if (diff > 0) {
-                        el.value = 'Surplus';
-                        el.className = 'form-control bg-light text-success fw-bold';
-                    } else if (diff < 0) {
-                        el.value = 'Deficit';
-                        el.className = 'form-control bg-light text-danger fw-bold';
-                    } else {
-                        el.value = 'Balanced';
-                        el.className = 'form-control bg-light text-primary fw-bold';
-                    }
-                });
-
-                footer.style.display = '';
-
-            } catch (err) {
-                body.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
-            }
-        }
-
-        document.getElementById('btnDoCloseShift').addEventListener('click', async function() {
-            const closingEl = document.getElementById('cs_closing_balance');
-            if (!closingEl) return;
-
-            // Robust value reading: try AutoNumeric, fallback to raw stripped value
-            let closingVal = 0;
-            const closingAN = AutoNumeric.getAutoNumericElement(closingEl);
-            if (closingAN) {
-                closingVal = closingAN.getNumber() || 0;
-            } else {
-                closingVal = parseInt(closingEl.value.replace(/[^\d]/g, '')) || 0;
-            }
-
-            if (!closingVal || closingVal <= 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Closing Balance kosong!',
-                    text: 'Harap isi Closing Balance terlebih dahulu.',
-                    customClass: {
-                        confirmButton: 'btn btn-primary waves-effect waves-light'
-                    },
-                    buttonsStyling: false
-                });
-                return;
-            }
-
-            const confirmed = await Swal.fire({
-                title: 'Tutup Shift?',
-                text: 'Setelah ditutup, shift baru hanya bisa dibuka besok.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, Tutup',
-                cancelButtonText: 'Batal',
-                customClass: {
-                    confirmButton: 'btn btn-danger waves-effect waves-light',
-                    cancelButton: 'btn btn-secondary waves-effect waves-light'
-                },
-                buttonsStyling: false
-            });
-            if (!confirmed.isConfirmed) return;
-
-            const btn = this;
-            btn.disabled = true;
-
-            try {
-                const systemBalance = _shiftData.system_balance || 0;
-                const difference = closingVal - systemBalance;
-                const statusBalance = difference > 0 ? 'Surplus' : (difference < 0 ? 'Deficit' : 'Balanced');
-                const closedAt = new Date().toLocaleString('id-ID', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-
-                const recapData = {
-                    cashier: _shiftData.shift.cashier,
-                    counter: _shiftData.shift.counter,
-                    opened_at: _shiftData.shift.opened_at,
-                    closed_at: closedAt,
-                    opening_balance: _shiftData.shift.opening_balance,
-                    system_balance: systemBalance,
-                    closing_balance: closingVal,
-                    difference: difference,
-                    status_balance: statusBalance,
-                    total_cash: _shiftData.total_cash,
-                    total_noncash: _shiftData.total_noncash,
-                    grand_total: _shiftData.grand_total,
-                    by_method: _shiftData.by_method,
-                    by_channel: _shiftData.by_channel,
-                };
-
-                // ── STEP 1: Print first ──────────────────────────────────
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Mencetak Rekap...';
-                await printShiftRecap(recapData);
-
-                // ── STEP 2: AJAX save ────────────────────────────────────
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...';
-
-                const shiftId = document.getElementById('cs_shift_id')?.value;
-                if (!shiftId) throw new Error('Shift ID tidak ditemukan. Coba tutup dan buka modal lagi.');
-
-                const fd = new FormData();
-                fd.append('_token', '{{ csrf_token() }}');
-                fd.append('cashier_shift_id', shiftId);
-                fd.append('system_balance', systemBalance);
-                fd.append('closing_balance', closingVal);
-                fd.append('difference', difference);
-                fd.append('notes', document.getElementById('cs_notes').value || '');
-
-                const res = await fetch('{{ route('transaction.set-close-shift') }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                    },
-                    body: fd,
-                });
-
-                // Capture raw text first to expose server error details
-                const rawText = await res.text();
-                let json = null;
-                try {
-                    json = JSON.parse(rawText);
-                } catch (e) {
-                    console.error('Server returned non-JSON:', rawText.substring(0, 500));
-                    throw new Error(
-                        `Server error ${res.status}: ${res.statusText || 'Lihat console untuk detail'}`);
-                }
-
-                if (!res.ok || json?.status === 'error') {
-                    throw new Error(json?.message || `Error ${res.status}`);
-                }
-
-                // ── STEP 3: Redirect ─────────────────────────────────────
-                window.location.href = json?.redirect_url || '{{ route('transaction.close') }}';
-
-            } catch (err) {
-                console.error('Close shift error:', err);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal Menutup Shift',
-                    text: err.message,
-                    customClass: {
-                        confirmButton: 'btn btn-primary waves-effect waves-light'
-                    },
-                    buttonsStyling: false
-                });
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-lock me-1"></i>Close Shift';
-            }
-        });
-
-
-        // ─────────────────────────────────────────────────────────────
-        // Print Shift Recap via BT Printer (fallback: window.print)
-        // ─────────────────────────────────────────────────────────────
-        async function printShiftRecap(d) {
-            // If BT printer is already paired & connected → send bytes
-            if (window.BTPrinter && window.BTPrinter.isConnected) {
-                try {
-                    const bytes = buildShiftReceiptBytes(d);
-                    await window.BTPrinter.sendData(bytes);
-                    return; // done, no popup needed
-                } catch (e) {
-                    console.warn('BT print gagal, fallback ke window:', e);
-                }
-            }
-            // Fallback: open print popup
-            printShiftRecapWindow(d);
-        }
-
-        function buildShiftReceiptBytes(d) {
-            const pad32 = (l, r) => {
-                const rs = String(r);
-                return String(l).padEnd(32 - rs.length) + rs;
-            };
-            const center = (t) => String(t).padStart(Math.floor((32 + String(t).length) / 2)).padEnd(32);
-            const div = '--------------------------------';
-            const lines = [
-                center('REKAP SHIFT'), div,
-                pad32('Kasir:', d.cashier), pad32('Counter:', d.counter),
-                pad32('Jam Buka:', d.opened_at), pad32('Jam Tutup:', d.closed_at),
-                div,
-                pad32('Opening Balance:', formatRupiah(d.opening_balance)),
-                pad32('System Balance:', formatRupiah(d.system_balance)),
-                pad32('Closing Balance:', formatRupiah(d.closing_balance)),
-                pad32('Difference:', formatRupiah(d.difference)),
-                pad32('Status:', d.status_balance),
-                div,
-                pad32('Total Cash:', formatRupiah(d.total_cash)),
-                pad32('Total Non-Cash:', formatRupiah(d.total_noncash)),
-                pad32('Grand Total:', formatRupiah(d.grand_total)),
-            ];
-            if (Object.keys(d.by_method).length) {
-                lines.push(div);
-                lines.push('Non-Cash per Metode:');
-                Object.entries(d.by_method).forEach(([k, v]) => lines.push(pad32('  ' + (k || '-') + ':', formatRupiah(
-                    v))));
-            }
-            if (Object.keys(d.by_channel).length) {
-                lines.push(div);
-                lines.push('Non-Cash per Channel:');
-                Object.entries(d.by_channel).forEach(([k, v]) => lines.push(pad32('  ' + (k || '-') + ':', formatRupiah(
-                    v))));
-            }
-            lines.push(div, center('- TERIMA KASIH -'), '', '', '');
-            return new TextEncoder().encode(lines.join('\n'));
-        }
-
-        function printShiftRecapWindow(d) {
-            const rp = (v) => 'Rp ' + parseInt(v || 0).toLocaleString('id-ID');
-            const row = (l, r) =>
-                `<tr><td style="padding:2px 4px">${l}</td><td style="text-align:right;padding:2px 4px"><b>${r}</b></td></tr>`;
-            const sectionHeader = (t) =>
-                `<tr style="background:#eee"><td colspan="2" style="padding:2px 4px"><b>${t}</b></td></tr>`;
-            let methodRows = Object.entries(d.by_method).map(([k, v]) => row('&nbsp;&nbsp;' + (k || '-'), rp(v))).join('');
-            let channelRows = Object.entries(d.by_channel).map(([k, v]) => row('&nbsp;&nbsp;' + (k || '-'), rp(v))).join(
-                '');
-
-            const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rekap Shift</title>
-            <style>body{font-family:monospace;font-size:12px;margin:8px;width:280px}
-            h2{text-align:center;font-size:13px;margin:4px 0}hr{border:none;border-top:1px dashed #000;margin:6px 0}
-            table{width:100%;border-collapse:collapse}@media print{button{display:none}}</style></head><body>
-            <h2>REKAP SHIFT</h2><hr>
-            <table>
-                ${row('Kasir', d.cashier)}
-                ${row('Counter', d.counter)}
-                ${row('Jam Buka', d.opened_at)}
-                ${row('Jam Tutup', d.closed_at)}
-            </table><hr>
-            <table>
-                ${row('Opening Balance', rp(d.opening_balance))}
-                ${row('System Balance', rp(d.system_balance))}
-                ${row('Closing Balance', rp(d.closing_balance))}
-                ${row('Difference', rp(d.difference))}
-                ${row('Status Balance', d.status_balance)}
-            </table><hr>
-            <table>
-                ${row('Total Cash', rp(d.total_cash))}
-                ${row('Total Non-Cash', rp(d.total_noncash))}
-                ${row('Grand Total', rp(d.grand_total))}
-            </table>
-            ${ Object.keys(d.by_method).length ? `<hr><table>${sectionHeader('Non-Cash per Metode')}${methodRows}</table>` : '' }
-            ${ Object.keys(d.by_channel).length ? `<hr><table>${sectionHeader('Non-Cash per Channel')}${channelRows}</table>` : '' }
-            <hr><p style="text-align:center;margin:4px 0">- TERIMA KASIH -</p>
-            <script>window.onload=()=>{window.print();};<\/script>
-            </body></html>`;
-
-            const w = window.open('', '_blank', 'width=420,height=650');
-            if (w) {
-                w.document.write(html);
-                w.document.close();
-            }
         }
     </script>
 

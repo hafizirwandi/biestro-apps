@@ -39,10 +39,11 @@
                      <thead>
                          <tr>
                              <th>Transaction code</th>
+                             <th>Status</th>
                              <th>Paid at</th>
                              <th>Payment Type</th>
                              <th>Non Cash Method</th>
-                             <th>Bank</th>
+                             <th>Alasan Batal</th>
                              <th>Total </th>
                              <th>Info </th>
 
@@ -54,10 +55,17 @@
                          @foreach ($data as $r)
                              <tr>
                                  <td>{{ $r->transaction_code }}</td>
+                                 <td>
+                                     @if ($r->payment_status === 'voided')
+                                         <span class="badge bg-danger">VOID</span>
+                                     @else
+                                         <span class="badge bg-success">PAID</span>
+                                     @endif
+                                 </td>
                                  <td>{{ $r->paid_at }}</td>
                                  <td>{{ $r->payment_type }}</td>
                                  <td>{{ $r->noncash_method ?? '-' }}</td>
-                                 <td>{{ $r->bank ?? '-' }}</td>
+                                 <td class="text-danger small">{{ $r->void_reason ?? '-' }}</td>
                                  <td>{{ format_rupiah($r->total_amount) }}</td>
                                  <td>
                                      <div class="d-flex">

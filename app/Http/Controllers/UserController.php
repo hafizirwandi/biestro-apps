@@ -21,7 +21,6 @@ class UserController extends Controller
 
     public function create()
     {
-
         $data['role'] = Role::all();
         return view('user.create', $data);
     }
@@ -38,28 +37,24 @@ class UserController extends Controller
         try {
             $rules = [
                 'name' => 'required',
-                'name' => 'required',
                 'username' => 'required',
                 'password' => 'required',
-                'email' => 'nullable|email', // email harus merupakan format email, bisa null
-                'status' => 'required|in:0,1,2', // status harus berupa 0, 1, atau 2, tidak boleh null
+                'email' => 'nullable|email',
+                'status' => 'required|in:0,1,2',
+                'spv_pin' => 'nullable|string|min:4|max:6',
             ];
             if ($id != null) {
-
-                $rules['username'] = [
-                    'required',
-                    Rule::unique('users')->ignore($id),
-                ];
+                $rules['username'] = ['required', Rule::unique('users')->ignore($id)];
 
                 $user = User::with('roles')->findOrFail($id);
                 $data = $request->validate($rules);
                 if ($request->input('password2')) {
-                    $data['password'] =  Hash::make(($request->input('password2')));
+                    $data['password'] = Hash::make($request->input('password2'));
                 }
 
                 $user->where('id', $id)->update($data);
                 //role
-                $old_role = ($user->roles)[0]->name ?? null;
+                $old_role = $user->roles[0]->name ?? null;
                 if ($old_role != $request->input('role')) {
                     $user->assignRole($request->input('role'));
                     if ($old_role != null) {
@@ -72,7 +67,7 @@ class UserController extends Controller
             } else {
                 $rules['username'] = 'required|unique:users';
                 $data = $request->validate($rules);
-                $data['password'] =  Hash::make(($request->input('password')));
+                $data['password'] = Hash::make($request->input('password'));
                 $user = User::create($data);
                 //role
                 $user->assignRole($request->input('role'));
@@ -80,13 +75,11 @@ class UserController extends Controller
             }
             return back()->with('success', $msg);
         } catch (\Exception $e) {
-
             return $e->getMessage();
 
             return back()->with('error', $e->getMessage());
         }
     }
-
 
     public function destroy(Request $request)
     {
@@ -94,7 +87,6 @@ class UserController extends Controller
             User::destroy($request->input('id'));
             return back()->with('success', 'User deleted successfully');
         } catch (\Exception $e) {
-
             return back()->with('error', $e->getMessage());
         }
     }

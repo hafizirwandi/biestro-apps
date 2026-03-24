@@ -364,6 +364,9 @@ class TransactionController extends Controller
                 $printer->printBill($transaction->details, $transaction->total_amount);
             }
 
+            $transaction->bill_count_print += 1;
+            $transaction->save();
+
             return response()->json(['status' => 'success']);
         } catch (Exception $e) {
             return response()->json(
@@ -549,9 +552,6 @@ class TransactionController extends Controller
     {
         $shiftId = session('cashier_shift_id');
 
-        $transaction = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get();
-        $totalCash = $transaction->where('payment_type', 'cash')->sum('total_amount');
-
         if (!$shiftId) {
             return redirect()->route('transaction.open-shift')->with('error', 'Shift anda belum terbuat, silahkan open shift untuk memulai transaksi');
         }
@@ -562,11 +562,19 @@ class TransactionController extends Controller
             return redirect()->route('transaction.open-shift')->with('error', 'Shift tidak ditemukan.');
         }
 
+        $transaction = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get();
+        $totalCash = $transaction->where('payment_type', 'cash')->sum('total_amount');
+        $totalNonCash = $transaction->where('payment_type', 'noncash')->sum('total_amount');
+        $grandTotal = $transaction->sum('total_amount');
+
         $system_balance = $shift->opening_balance + $totalCash;
+
+        $byMethod = $transaction->where('payment_type', 'noncash')->groupBy('noncash_method')->map(fn($rows) => $rows->sum('total_amount'))->toArray();
+        $byChannel = $transaction->where('payment_type', 'noncash')->groupBy('noncash_channel')->map(fn($rows) => $rows->sum('total_amount'))->toArray();
 
         $counter = Counter::where('is_active', 1)->get();
 
-        return view('transaction.close-shift', compact('counter', 'shift', 'system_balance'));
+        return view('transaction.close-shift', compact('counter', 'shift', 'system_balance', 'totalCash', 'totalNonCash', 'grandTotal', 'byMethod', 'byChannel'));
     }
 
     public function setOpenShift(Request $request)
@@ -642,12 +650,113 @@ class TransactionController extends Controller
         }
     }
 
+    public function wahanaSold()
+    {
+        $shiftId = session('cashier_shift_id');
+
+        $transactions = Transaction::with(['details.ticket.wahana', 'details.ticketPackage.wahanas'])
+            ->where('cashier_shift_id', $shiftId)
+            ->where('payment_status', 'paid')
+            ->get();
+
+        $wahanaCounts = [];
+
+        foreach ($transactions as $t) {
+            foreach ($t->details as $d) {
+                if ($d->ticket_id && $d->ticket && $d->ticket->wahana) {
+                    $name = $d->ticket->wahana->name;
+                    $qty = $d->quantity;
+                    if (!isset($wahanaCounts[$name])) {
+                        $wahanaCounts[$name] = ['name' => $name, 'qty' => 0];
+                    }
+                    $wahanaCounts[$name]['qty'] += $qty;
+                } elseif ($d->ticket_package_id && $d->ticketPackage) {
+                    foreach ($d->ticketPackage->wahanas as $w) {
+                        $name = $w->name;
+                        // use pivot qty if exists to multiply package qty by contents
+                        $wQty = isset($w->pivot->qty) ? $w->pivot->qty : 1;
+                        $qty = $d->quantity * $wQty;
+
+                        if (!isset($wahanaCounts[$name])) {
+                            $wahanaCounts[$name] = ['name' => $name, 'qty' => 0];
+                        }
+                        $wahanaCounts[$name]['qty'] += $qty;
+                    }
+                }
+            }
+        }
+
+        $wahanaCounts = array_values($wahanaCounts);
+        usort($wahanaCounts, function ($a, $b) {
+            return $b['qty'] <=> $a['qty'];
+        });
+
+        $top3 = array_slice($wahanaCounts, 0, 3);
+        $all = $wahanaCounts;
+
+        return response()->json([
+            'status' => 'success',
+            'top3' => $top3,
+            'all' => $all,
+        ]);
+    }
+
+    public function ticketSold()
+    {
+        $shiftId = session('cashier_shift_id');
+
+        // we need all details logic
+        // but simple fetch group by
+        $transactions = Transaction::with(['details.ticket', 'details.ticketPackage'])
+            ->where('cashier_shift_id', $shiftId)
+            ->where('payment_status', 'paid')
+            ->get();
+
+        $ticketCounts = [];
+
+        foreach ($transactions as $t) {
+            foreach ($t->details as $d) {
+                $name = 'Ticket';
+                if ($d->ticket_id && $d->ticket) {
+                    $name = $d->ticket->name;
+                } elseif ($d->ticket_package_id && $d->ticketPackage) {
+                    $name = $d->ticketPackage->name;
+                } else {
+                    continue; // skip if invalid
+                }
+
+                if (!isset($ticketCounts[$name])) {
+                    $ticketCounts[$name] = [
+                        'name' => $name,
+                        'qty' => 0,
+                    ];
+                }
+                $ticketCounts[$name]['qty'] += $d->quantity;
+            }
+        }
+
+        $ticketCounts = array_values($ticketCounts);
+        usort($ticketCounts, function ($a, $b) {
+            return $b['qty'] <=> $a['qty'];
+        });
+
+        $top3 = array_slice($ticketCounts, 0, 3);
+        $all = $ticketCounts;
+
+        return response()->json([
+            'status' => 'success',
+            'top3' => $top3,
+            'all' => $all,
+        ]);
+    }
+
     public function salesRevenue(Request $request)
     {
         $shiftId = session('cashier_shift_id');
         $shift = CashierShift::find($shiftId);
 
-        $query = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid');
+        // Tampilkan semua (paid + voided) lalu filter
+        $query = Transaction::where('cashier_shift_id', $shiftId)->whereIn('payment_status', ['paid', 'voided']);
 
         // Filtering
         if ($request->has('filter') && $request->filter != '') {
@@ -656,6 +765,8 @@ class TransactionController extends Controller
                 $query->where('payment_type', 'cash');
             } elseif ($filter == 'noncash') {
                 $query->where('payment_type', 'noncash');
+            } elseif ($filter == 'voided') {
+                $query->where('payment_status', 'voided');
             } elseif (in_array($filter, ['qris', 'transfer', 'edc', 'lainnya'])) {
                 $query->where('noncash_method', $filter);
             }
@@ -663,23 +774,18 @@ class TransactionController extends Controller
 
         $transaction = $query->get();
 
-        // Data for Footer (Summary of the whole shift)
+        // Summary: hanya transaksi yang berhasil (bukan voided)
         $allTransactions = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get();
 
         $totalCash = $allTransactions->where('payment_type', 'cash')->sum('total_amount');
         $totalNonCash = $allTransactions->where('payment_type', 'noncash')->sum('total_amount');
         $grandTotal = $allTransactions->sum('total_amount');
+        $totalVoided = Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'voided')->count();
 
         // Breakdown Non-Cash by Channel
-        // Group by channel
-        $nonCashBreakdown = $allTransactions
-            ->where('payment_type', 'noncash')
-            ->groupBy('noncash_channel')
-            ->map(function ($row) {
-                return $row->sum('total_amount');
-            });
+        $nonCashBreakdown = $allTransactions->where('payment_type', 'noncash')->groupBy('noncash_channel')->map(fn($row) => $row->sum('total_amount'));
 
-        return view('transaction.sales-revenue', compact('transaction', 'shift', 'totalCash', 'totalNonCash', 'grandTotal', 'nonCashBreakdown'));
+        return view('transaction.sales-revenue', compact('transaction', 'shift', 'totalCash', 'totalNonCash', 'grandTotal', 'nonCashBreakdown', 'totalVoided'));
     }
     public function getShiftData()
     {
@@ -725,9 +831,18 @@ class TransactionController extends Controller
     public function close()
     {
         $shiftId = session('cashier_shift_id');
-        $shift = CashierShift::find($shiftId);
+        if (!$shiftId) {
+            $shift = \App\Models\CashierShift::where('user_id', auth()->id())
+                ->orderBy('id', 'desc')
+                ->first();
+            if ($shift) {
+                $shiftId = $shift->id;
+            }
+        } else {
+            $shift = \App\Models\CashierShift::find($shiftId);
+        }
 
-        $allTx = $shift ? Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get() : collect();
+        $allTx = $shift ? \App\Models\Transaction::where('cashier_shift_id', $shiftId)->where('payment_status', 'paid')->get() : collect();
 
         $totalCash = $allTx->where('payment_type', 'cash')->sum('total_amount');
         $totalNonCash = $allTx->where('payment_type', 'noncash')->sum('total_amount');
@@ -754,21 +869,61 @@ class TransactionController extends Controller
                 'spv_code' => 'required',
             ];
 
-            $spv_code = setting('spv_approve');
             $data = $request->validate($rules);
 
-            if ($spv_code !== $data['spv_code']) {
-                throw new \Exception('Password SPV wrong!');
+            $spvUser = \App\Models\User::where('spv_pin', $data['spv_code'])->first();
+
+            if (!$spvUser) {
+                if ($request->wantsJson()) {
+                    return response()->json(['status' => 'error', 'message' => 'PIN SPV salah!'], 422);
+                }
+                throw new \Exception('PIN SPV salah!');
             }
 
             // reset count_print semua tiket dari transaksi terkait
             IssuedTicket::where('transaction_id', $data['id'])->update(['count_print' => 0]);
 
+            // reset bill count
+            Transaction::where('id', $data['id'])->update(['bill_count_print' => 0]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['status' => 'success', 'message' => 'Tiket dan struk berhasil di-reset.']);
+            }
             return back()->with('success', 'Tickets berhasil di-reset dan siap di reprint');
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+            }
             return back()->with('error', $e->getMessage());
         }
     }
+    public function voidTransaction(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'id' => 'required|exists:transactions,id',
+                'spv_code' => 'required',
+                'void_reason' => 'required|string|max:500',
+            ]);
+
+            $spvUser = \App\Models\User::where('spv_pin', $data['spv_code'])->first();
+            if (!$spvUser) {
+                return response()->json(['status' => 'error', 'message' => 'PIN SPV salah!'], 422);
+            }
+
+            $transaction = Transaction::where('id', $data['id'])->where('payment_status', 'paid')->firstOrFail();
+            $transaction->payment_status = 'voided';
+            $transaction->voided_at = now();
+            $transaction->voided_by = $spvUser->id;
+            $transaction->void_reason = $data['void_reason'];
+            $transaction->save();
+
+            return response()->json(['status' => 'ok', 'message' => 'Transaksi berhasil dibatalkan.']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
     public function deleteDraftTransaction($id)
     {
         try {

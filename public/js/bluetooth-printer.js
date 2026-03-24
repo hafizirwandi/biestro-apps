@@ -312,6 +312,12 @@ window.BTPrinter = {
     // ── Build ticket ESC/POS ──────────────────────────────────────
     buildTicket(data) {
         const esc = new EscPos().init().lf(2);
+
+        // ── COPY label (cetak kembali) ──────────────
+        if (data.is_copy) {
+            esc.align(1).bold(true).textLine('*** CETAK KEMBALI ***').bold(false);
+        }
+
         // Header (supports \n for multi-line)
         esc.align(1).bold(true).doubleWidth(true);
         esc.textLines(data.header ?? '');
@@ -326,6 +332,45 @@ window.BTPrinter = {
         esc.lf().dashedLine();
         esc.align(1);
         if (data.footer) esc.textLines(data.footer);
+        esc.lf(4).cut();
+        return esc.getBytes();
+    },
+
+    // ── Build shift recap ESC/POS ─────────────────────────────────
+    buildShiftRecap(d) {
+        const rp = (v) => 'Rp ' + parseInt(v || 0).toLocaleString('id-ID');
+        const esc = new EscPos().init().lf();
+
+        esc.align(1).bold(true).doubleWidth(true).textLine('REKAP SHIFT').doubleWidth(false).bold(false);
+        esc.dashedLine();
+        esc.align(0);
+        esc.textLine(`Kasir   : ${d.cashier}`);
+        esc.textLine(`Counter : ${d.counter}`);
+        esc.textLine(`Buka    : ${d.opened_at}`);
+        esc.textLine(`Tutup   : ${d.closed_at}`);
+        esc.dashedLine();
+        esc.textLine(`Opening Balance : ${rp(d.opening_balance)}`);
+        esc.textLine(`System Balance  : ${rp(d.system_balance)}`);
+        esc.textLine(`Closing Balance : ${rp(d.closing_balance)}`);
+        esc.textLine(`Difference      : ${rp(d.difference)}`);
+        esc.textLine(`Status Balance  : ${d.status_balance}`);
+        esc.dashedLine();
+        esc.textLine(`Total Cash      : ${rp(d.total_cash)}`);
+        esc.textLine(`Total Non-Cash  : ${rp(d.total_noncash)}`);
+        esc.bold(true).textLine(`Grand Total     : ${rp(d.grand_total)}`).bold(false);
+
+        if (d.by_method && Object.keys(d.by_method).length) {
+            esc.dashedLine('-', 32);
+            esc.textLine('Non-Cash per Metode:');
+            Object.entries(d.by_method).forEach(([k, v]) => esc.textLine(`  ${k || '-'} : ${rp(v)}`));
+        }
+        if (d.by_channel && Object.keys(d.by_channel).length) {
+            esc.dashedLine('-', 32);
+            esc.textLine('Non-Cash per Channel:');
+            Object.entries(d.by_channel).forEach(([k, v]) => esc.textLine(`  ${k || '-'} : ${rp(v)}`));
+        }
+
+        esc.dashedLine().align(1).textLine('- TERIMA KASIH -');
         esc.lf(4).cut();
         return esc.getBytes();
     },

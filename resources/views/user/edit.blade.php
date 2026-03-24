@@ -48,6 +48,13 @@
           </select>
       </div>
 
+      <div class="col-12 col-md-6">
+          <label class="form-label">SPV PIN</label>
+          <input type="password" name="spv_pin" class="form-control" placeholder="PIN Password (4-6 digit)"
+              minlength="4" maxlength="6" value="{{ $data->spv_pin }}" />
+          <small class="text-muted">Isi jika role Supervisor</small>
+      </div>
+
 
       <div class="col-12 text-center">
           <button type="submit" class="btn btn-primary me-sm-3 me-1">Submit</button>

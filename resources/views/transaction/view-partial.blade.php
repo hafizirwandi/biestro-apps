@@ -47,18 +47,26 @@
     .underline {
         text-decoration: underline !important;
     }
+
+    #btnConnectBT.connected,
+    .btnConnectBT.connected {
+        background-color: #28c76f !important;
+        border-color: #28c76f !important;
+        color: white !important;
+    }
 </style>
 
 {{-- Action buttons --}}
 <div class="row mb-3">
-    <div class="col-12 d-flex gap-2 flex-wrap">
+    <div class="col-12 d-flex gap-2 flex-wrap align-items-center">
         <a href="javascript:;" onclick="confirmRePrint({{ $data->id }})" class="btn btn-primary">
-            Re Print Ticket
+            <i class="fas fa-print me-1"></i> Re Print Ticket
         </a>
 
-        <button id="btnConnectBT" class="btn btn-outline-secondary" onclick="connectBTPrinter()"
-            title="Connect Bluetooth Printer">
-            <i class="fas fa-bluetooth-b me-1"></i>
+        <button id="btnConnectBT" class="btn btn-outline-secondary d-flex align-items-center gap-2"
+            onclick="connectBTPrinter()" title="Connect Bluetooth Printer">
+            <span id="printerDot" class="printer-dot"></span>
+            <i class="fas fa-bluetooth-b"></i>
             <span id="btnConnectBTLabel">Connect Printer</span>
         </button>
 
@@ -70,6 +78,27 @@
         </form>
     </div>
 </div>
+
+<style>
+    #btnConnectBT .printer-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #9e9ec0;
+        transition: background 0.3s;
+        flex-shrink: 0;
+    }
+
+    #btnConnectBT.connected {
+        border-color: #28c76f !important;
+        color: #28c76f !important;
+    }
+
+    #btnConnectBT.connected .printer-dot {
+        background: #28c76f;
+        box-shadow: 0 0 6px #28c76f80;
+    }
+</style>
 
 {{-- Order header --}}
 <div class="row justify-content-center mb-2">
@@ -132,8 +161,15 @@
             </div>
         </div>
 
-        <button onclick="printBill(`{{ $data->id }}`)" class="btn btn-primary w-100 mt-3" id="btnPrintBill">
-            <i class="fas fa-print me-1"></i> Print Bill
+        @php $isBillPrinted = $data->bill_count_print > 0; @endphp
+        <button onclick="printBill(`{{ $data->id }}`)"
+            class="btn btn-primary w-100 mt-3 {{ $isBillPrinted ? 'disabled' : '' }}" id="btnPrintBill"
+            {{ $isBillPrinted ? 'disabled' : '' }}>
+            @if ($isBillPrinted)
+                <i class="fas fa-check me-1"></i> Sudah Dicetak
+            @else
+                <i class="fas fa-print me-1"></i> Print Bill
+            @endif
         </button>
     </div>
 
@@ -179,5 +215,19 @@
 {{-- Supervisor reprint form (hidden) --}}
 <script>
     // Re-init connect button state (injected dynamically, listeners already set on index page)
-    if (typeof updateConnectBtn === 'function') updateConnectBtn();
+    (function syncPrinterBtn() {
+        const btn = document.getElementById('btnConnectBT');
+        const dot = document.getElementById('printerDot');
+        const label = document.getElementById('btnConnectBTLabel');
+        if (!btn) return;
+        if (window.BTPrinter && window.BTPrinter.isConnected) {
+            btn.classList.add('connected');
+            if (dot) dot.classList.add('connected');
+            if (label) label.textContent = 'Printer Connected ✓';
+        } else {
+            btn.classList.remove('connected');
+            if (dot) dot.classList.remove('connected');
+            if (label) label.textContent = 'Connect Printer';
+        }
+    })();
 </script>
