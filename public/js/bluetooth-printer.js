@@ -270,7 +270,11 @@ window.BTPrinter = {
             log('❌ Printer belum terkoneksi!', 'error');
             return false;
         }
-        const CHUNK = 512;
+        
+        // Printer thermal POS Bluetooth murah memiliki BLE GATT buffer & memori kecil.
+        // Jika CHUNK terlalu besar, data struk yang panjang akan menyebabkan GATT overflow dan gagal dikirim.
+        // Solusi: Kurangi CHUNK menjadi 100 bytes (atau kelipatan kecil) dan beri delay antar pengiriman.
+        const CHUNK = 100;
         try {
             for (let i = 0; i < bytes.length; i += CHUNK) {
                 const chunk = bytes.slice(i, i + CHUNK);
@@ -279,6 +283,9 @@ window.BTPrinter = {
                 } else {
                     await this.characteristic.writeValue(chunk);
                 }
+                
+                // Jeda 20ms antar chunk untuk memberi nafas bagi ESP/chip memproses buffer
+                await new Promise(r => setTimeout(r, 20));
             }
             return true;
         } catch (e) {
