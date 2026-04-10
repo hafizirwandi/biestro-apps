@@ -69,7 +69,7 @@
             padding: 6px 14px;
             font-size: 13px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.25s ease;
         }
 
         .btn-printer:hover {
@@ -78,8 +78,14 @@
         }
 
         .btn-printer.connected {
+            background: rgba(40, 199, 111, 0.15);
             border-color: #28c76f;
             color: #28c76f;
+            box-shadow: 0 0 10px rgba(40, 199, 111, 0.2);
+        }
+
+        .btn-printer.connected:hover {
+            background: rgba(40, 199, 111, 0.25);
         }
 
         .printer-dot {
@@ -88,11 +94,27 @@
             border-radius: 50%;
             background: #9e9ec0;
             transition: background 0.3s;
+            flex-shrink: 0;
         }
 
         .printer-dot.connected {
             background: #28c76f;
-            box-shadow: 0 0 6px #28c76f80;
+            box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+            animation: printerPulse 1.8s infinite;
+        }
+
+        @keyframes printerPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(40, 199, 111, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(40, 199, 111, 0);
+            }
         }
     </style>
 @endif
@@ -228,7 +250,8 @@
 
     @if ($showPrinterBtn)
         <div class="pos-dots-wrap" id="posDotsWrap">
-            <button class="btn-printer" id="btnConnectBT" onclick="connectBTPrinter()">
+            <button class="btn-printer" id="btnConnectBT" onclick="connectBTPrinter()"
+                title="Klik untuk connect/disconnect printer">
                 <span class="printer-dot" id="printerDot"></span>
                 <i class="ti ti-printer"></i>
                 <span id="btnConnectBTLabel">Connect Printer</span>

@@ -243,7 +243,7 @@
             padding: 6px 14px;
             font-size: 13px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.25s ease;
         }
 
         .btn-printer:hover {
@@ -252,8 +252,14 @@
         }
 
         .btn-printer.connected {
+            background: rgba(40, 199, 111, 0.15);
             border-color: #28c76f;
             color: #28c76f;
+            box-shadow: 0 0 10px rgba(40, 199, 111, 0.2);
+        }
+
+        .btn-printer.connected:hover {
+            background: rgba(40, 199, 111, 0.25);
         }
 
         .printer-dot {
@@ -262,11 +268,27 @@
             border-radius: 50%;
             background: #9e9ec0;
             transition: background 0.3s;
+            flex-shrink: 0;
         }
 
         .printer-dot.connected {
             background: #28c76f;
-            box-shadow: 0 0 6px #28c76f80;
+            box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+            animation: printerPulse 1.8s infinite;
+        }
+
+        @keyframes printerPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(40, 199, 111, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(40, 199, 111, 0);
+            }
         }
     </style>
 
@@ -1463,19 +1485,17 @@
         // Connect Printer helpers (shared: used by partial too)
         // ─────────────────────────────────────────────────────────────
         function updateConnectBtn() {
-            const btns = document.querySelectorAll('#btnConnectBT, .btnConnectBT');
+            const btns = document.querySelectorAll('#btnConnectBT, .btnConnectBT, .btn-printer');
             btns.forEach(btn => {
-                const label = btn.querySelector('#btnConnectBTLabel, .btnConnectBTLabel') || btn.nextElementSibling;
-                const dot = btn.querySelector('#printerDot, .printerDot');
+                const label = btn.querySelector('#btnConnectBTLabel, .btnConnectBTLabel, span:last-child');
+                const dot = btn.querySelector('#printerDot, .printerDot, .printer-dot');
 
                 if (window.BTPrinter?.isConnected) {
-                    btn.classList.remove('btn-outline-secondary');
-                    btn.classList.add('btn-outline-success', 'connected');
+                    btn.classList.add('connected');
                     if (dot) dot.classList.add('connected');
-                    if (label) label.textContent = 'Printer Connected ✓';
+                    if (label) label.textContent = 'Printer Terhubung ✓';
                 } else {
-                    btn.classList.remove('btn-outline-success', 'connected');
-                    btn.classList.add('btn-outline-secondary');
+                    btn.classList.remove('connected');
                     if (dot) dot.classList.remove('connected');
                     if (label) label.textContent = 'Connect Printer';
                 }

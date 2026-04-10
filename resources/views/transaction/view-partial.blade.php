@@ -48,24 +48,77 @@
         text-decoration: underline !important;
     }
 
-    #btnConnectBT.connected,
-    .btnConnectBT.connected {
-        background-color: #28c76f !important;
-        border-color: #28c76f !important;
-        color: white !important;
+    /* ── BT Printer Button (popup) ── */
+    #btnConnectBT {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        border: 1.5px solid #dee2e6;
+        background: #f8f9fa;
+        color: #495057;
+    }
+
+    #btnConnectBT:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+    }
+
+    #btnConnectBT.connected {
+        background: rgba(40, 199, 111, 0.1);
+        border-color: #28c76f;
+        color: #1a9e57;
+        box-shadow: 0 0 10px rgba(40, 199, 111, 0.2);
+    }
+
+    #btnConnectBT.connected:hover {
+        background: rgba(40, 199, 111, 0.2);
+    }
+
+    #btnConnectBT .printer-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #adb5bd;
+        flex-shrink: 0;
+        transition: background 0.3s;
+    }
+
+    #btnConnectBT.connected .printer-dot {
+        background: #28c76f;
+        box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+        animation: printerPulse 1.8s infinite;
+    }
+
+    @keyframes printerPulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+        }
+
+        70% {
+            box-shadow: 0 0 0 6px rgba(40, 199, 111, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(40, 199, 111, 0);
+        }
     }
 </style>
 
 {{-- Action buttons --}}
 <div class="row mb-3">
     <div class="col-12 d-flex gap-2 flex-wrap align-items-center">
-        <a href="javascript:;" onclick="confirmRePrint({{ $data->id }})" class="btn btn-primary">
-            <i class="fas fa-print me-1"></i> Re Print Ticket
+        <a href="javascript:;" onclick="confirmRePrint({{ $data->id }})" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-redo me-1"></i> Re Print Ticket
         </a>
 
-        <button id="btnConnectBT" class="btn btn-outline-secondary d-flex align-items-center gap-2"
-            onclick="connectBTPrinter()" title="Connect Bluetooth Printer">
-            <span id="printerDot" class="printer-dot"></span>
+        <button id="btnConnectBT" onclick="connectBTPrinter()" title="Connect / Disconnect Bluetooth Printer">
+            <span class="printer-dot" id="printerDot"></span>
             <i class="fas fa-bluetooth-b"></i>
             <span id="btnConnectBTLabel">Connect Printer</span>
         </button>
@@ -80,23 +133,65 @@
 </div>
 
 <style>
+    #btnConnectBT {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        border: 1.5px solid #dee2e6;
+        background: #f8f9fa;
+        color: #495057;
+    }
+
+    #btnConnectBT:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+    }
+
+    #btnConnectBT.connected {
+        background: rgba(40, 199, 111, 0.1);
+        border-color: #28c76f;
+        color: #1a9e57;
+        box-shadow: 0 0 10px rgba(40, 199, 111, 0.2);
+    }
+
+    #btnConnectBT.connected:hover {
+        background: rgba(40, 199, 111, 0.2);
+    }
+
     #btnConnectBT .printer-dot {
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: #9e9ec0;
-        transition: background 0.3s;
+        background: #adb5bd;
+        border-radius: 50%;
         flex-shrink: 0;
-    }
-
-    #btnConnectBT.connected {
-        border-color: #28c76f !important;
-        color: #28c76f !important;
+        transition: background 0.3s;
     }
 
     #btnConnectBT.connected .printer-dot {
         background: #28c76f;
-        box-shadow: 0 0 6px #28c76f80;
+        box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+        animation: printerPulse 1.8s infinite;
+    }
+
+    @keyframes printerPulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+        }
+
+        70% {
+            box-shadow: 0 0 0 6px rgba(40, 199, 111, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(40, 199, 111, 0);
+        }
     }
 </style>
 

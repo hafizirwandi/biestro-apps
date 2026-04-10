@@ -50,23 +50,85 @@
         .underline {
             text-decoration: underline !important;
         }
+
+        /* ── BT Connect Button ── */
+        #btnConnectBT {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border: 1.5px solid #dee2e6;
+            background: #f8f9fa;
+            color: #495057;
+        }
+
+        #btnConnectBT:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        #btnConnectBT.connected {
+            background: rgba(40, 199, 111, 0.1);
+            border-color: #28c76f;
+            color: #1a9e57;
+            box-shadow: 0 0 10px rgba(40, 199, 111, 0.2);
+        }
+
+        #btnConnectBT.connected:hover {
+            background: rgba(40, 199, 111, 0.2);
+        }
+
+        .printer-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #adb5bd;
+            flex-shrink: 0;
+            transition: background 0.3s;
+        }
+
+        #btnConnectBT.connected .printer-dot {
+            background: #28c76f;
+            box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+            animation: printerPulse 1.8s infinite;
+        }
+
+        @keyframes printerPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(40, 199, 111, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(40, 199, 111, 0);
+            }
+        }
     </style>
 @endsection
 @section('content')
 
 
     <div class="row mb-5">
-        <div class="col-md-12">
-            <a class="btn btn-primary" href="{{ route('transaction') }}">Back</a>
+        <div class="col-md-12 d-flex align-items-center gap-2 flex-wrap">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ route('transaction') }}"><i
+                    class="ti ti-arrow-left me-1"></i>Back</a>
 
-            <a href="javascript:;" onclick="confirmRePrint({{ $data->id }})" class="btn btn-primary">
-                Re Print Ticket
+            <a href="javascript:;" onclick="confirmRePrint({{ $data->id }})" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-redo me-1"></i> Re Print Ticket
             </a>
 
-            {{-- Connect Printer button: visible when disconnected --}}
-            <button id="btnConnectBT" class="btn btn-outline-secondary" onclick="connectBTPrinter()"
-                title="Connect Bluetooth Printer">
-                <i class="fas fa-bluetooth-b me-1"></i>
+            {{-- Connect Printer button --}}
+            <button id="btnConnectBT" onclick="connectBTPrinter()" title="Connect / Disconnect Bluetooth Printer">
+                <span class="printer-dot" id="printerDot"></span>
+                <i class="fas fa-bluetooth-b"></i>
                 <span id="btnConnectBTLabel">Connect Printer</span>
             </button>
 
@@ -212,19 +274,17 @@
         // Connect Printer button helpers
         // ─────────────────────────────────────────────────────
         function updateConnectBtn() {
-            const btns = document.querySelectorAll('#btnConnectBT, .btnConnectBT');
+            const btns = document.querySelectorAll('#btnConnectBT');
             btns.forEach(btn => {
-                const label = btn.querySelector('#btnConnectBTLabel, .btnConnectBTLabel') || btn.nextElementSibling;
-                const dot = btn.querySelector('#printerDot, .printerDot');
+                const label = btn.querySelector('#btnConnectBTLabel');
+                const dot = btn.querySelector('#printerDot, .printer-dot');
 
                 if (window.BTPrinter?.isConnected) {
-                    btn.classList.remove('btn-outline-secondary');
-                    btn.classList.add('btn-outline-success', 'connected');
+                    btn.classList.add('connected');
                     if (dot) dot.classList.add('connected');
-                    if (label) label.textContent = 'Printer Connected ✓';
+                    if (label) label.textContent = 'Printer Terhubung ✓';
                 } else {
-                    btn.classList.remove('btn-outline-success', 'connected');
-                    btn.classList.add('btn-outline-secondary');
+                    btn.classList.remove('connected');
                     if (dot) dot.classList.remove('connected');
                     if (label) label.textContent = 'Connect Printer';
                 }
