@@ -287,57 +287,89 @@
         // ────────────────────────────────────────────────────
         async function printBill(id) {
             const btn = document.getElementById('btnPrintBill');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Mencetak...';
+            let billPrinted = false;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Mencetak...';
+            }
 
             try {
-                // 1. Ensure connected (silent if already paired, popup only if first time)
-                const connected = await window.BTPrinter.connectOrReconnect();
+                // 1. Pastikan printer terkoneksi
+                let connected = false;
+                try {
+                    connected = await window.BTPrinter.connectOrReconnect();
+                } catch (connErr) {
+                    // Silent reconnect gagal, tawarkan scan manual
+                    const result = await Swal.fire({
+                        icon: 'warning',
+                        title: 'Printer tidak terkoneksi',
+                        text: 'Buka scan Bluetooth untuk pair printer?',
+                        showCancelButton: true,
+                        confirmButtonText: 'Buka Scan',
+                        cancelButtonText: 'Batal',
+                        customClass: {
+                            confirmButton: 'btn btn-primary',
+                            cancelButton: 'btn btn-outline-secondary'
+                        },
+                        buttonsStyling: false
+                    });
+                    if (result.isConfirmed) {
+                        connected = await window.BTPrinter.connect();
+                        if (typeof updateConnectBtn === 'function') updateConnectBtn();
+                    }
+                }
+
                 if (!connected) throw new Error('Printer tidak terkoneksi.');
 
-                // 2. Fetch bill data
+                // 2. Ambil data struk dari server
                 const res = await fetch(`{{ url('/printer/transaction-data') }}/${id}`);
                 if (!res.ok) throw new Error('Gagal mengambil data struk.');
                 const data = await res.json();
 
-                // 2. Build ESC/POS bytes & send to printer
+                // 3. Build ESC/POS & kirim ke printer
                 const bytes = window.BTPrinter.buildReceipt(data);
                 const ok = await window.BTPrinter.sendData(bytes);
 
-                if (ok) {
-                    // 3. Flag on server (no server-side print, just flagging)
-                    await flagBill(id);
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Struk berhasil dicetak!',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                }
+                if (!ok) throw new Error('Data gagal dikirim ke printer. Coba reconnect printer.');
+
+                // 4. Flag di server
+                await fetch('{{ route('transaction.print-bill') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        transaction_id: id,
+                        _bt: 1
+                    })
+                });
+
+                billPrinted = true;
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Struk berhasil dicetak!',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+
             } catch (e) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Gagal',
+                    title: 'Gagal Cetak',
                     text: e.message
                 });
             } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-print me-1"></i> Print Bill';
+                if (btn) {
+                    if (billPrinted) {
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="fas fa-check me-1"></i> Sudah Dicetak';
+                    } else {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-print me-1"></i> Print Bill';
+                    }
+                }
             }
-        }
-
-        async function flagBill(id) {
-            await fetch('{{ route('transaction.print-bill') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({
-                    transaction_id: id,
-                    _bt: 1
-                })
-            });
         }
 
         // ────────────────────────────────────────────────────

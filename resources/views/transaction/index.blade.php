@@ -1545,7 +1545,30 @@
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Mencetak...';
             }
             try {
-                const connected = await window.BTPrinter.connectOrReconnect();
+                // 1. Pastikan printer terkoneksi
+                let connected = false;
+                try {
+                    connected = await window.BTPrinter.connectOrReconnect();
+                } catch (connErr) {
+                    const result = await Swal.fire({
+                        icon: 'warning',
+                        title: 'Printer tidak terkoneksi',
+                        text: 'Buka scan Bluetooth untuk pair printer?',
+                        showCancelButton: true,
+                        confirmButtonText: 'Buka Scan',
+                        cancelButtonText: 'Batal',
+                        customClass: {
+                            confirmButton: 'btn btn-primary waves-effect waves-light',
+                            cancelButton: 'btn btn-outline-secondary'
+                        },
+                        buttonsStyling: false
+                    });
+                    if (result.isConfirmed) {
+                        connected = await window.BTPrinter.connect();
+                        updateConnectBtn();
+                    }
+                }
+
                 if (!connected) throw new Error('Printer tidak terkoneksi.');
 
                 const res = await fetch(`{{ url('/printer/transaction-data') }}/${id}`);
@@ -1554,34 +1577,35 @@
 
                 const bytes = window.BTPrinter.buildReceipt(data);
                 const ok = await window.BTPrinter.sendData(bytes);
-                if (ok) {
-                    await fetch('{{ route('transaction.print-bill') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify({
-                            transaction_id: id,
-                            _bt: 1
-                        })
-                    });
-                    billPrinted = true;
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Struk dicetak!',
-                        timer: 1500,
-                        showConfirmButton: false,
-                        customClass: {
-                            confirmButton: 'btn btn-primary waves-effect waves-light'
-                        },
-                        buttonsStyling: false
-                    });
-                }
+
+                if (!ok) throw new Error('Data gagal dikirim ke printer. Coba reconnect printer.');
+
+                await fetch('{{ route('transaction.print-bill') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        transaction_id: id,
+                        _bt: 1
+                    })
+                });
+                billPrinted = true;
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Struk dicetak!',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    customClass: {
+                        confirmButton: 'btn btn-primary waves-effect waves-light'
+                    },
+                    buttonsStyling: false
+                });
             } catch (e) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Gagal',
+                    title: 'Gagal Cetak',
                     text: e.message,
                     customClass: {
                         confirmButton: 'btn btn-primary waves-effect waves-light'
@@ -1609,7 +1633,30 @@
             const origClass = icon?.className;
             if (icon) icon.className = 'fas fa-spinner fa-spin ti-sm';
             try {
-                const connected = await window.BTPrinter.connectOrReconnect();
+                // Pastikan printer terkoneksi
+                let connected = false;
+                try {
+                    connected = await window.BTPrinter.connectOrReconnect();
+                } catch (connErr) {
+                    const result = await Swal.fire({
+                        icon: 'warning',
+                        title: 'Printer tidak terkoneksi',
+                        text: 'Buka scan Bluetooth untuk pair printer?',
+                        showCancelButton: true,
+                        confirmButtonText: 'Buka Scan',
+                        cancelButtonText: 'Batal',
+                        customClass: {
+                            confirmButton: 'btn btn-primary waves-effect waves-light',
+                            cancelButton: 'btn btn-outline-secondary'
+                        },
+                        buttonsStyling: false
+                    });
+                    if (result.isConfirmed) {
+                        connected = await window.BTPrinter.connect();
+                        updateConnectBtn();
+                    }
+                }
+
                 if (!connected) throw new Error('Printer tidak terkoneksi.');
 
                 const res = await fetch(`{{ url('/printer/ticket-data') }}/${id}`);
@@ -1618,48 +1665,48 @@
 
                 const bytes = window.BTPrinter.buildTicket(data);
                 const ok = await window.BTPrinter.sendData(bytes);
-                if (ok) {
-                    const flagRes = await fetch('{{ route('transaction.print-ticket') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify({
-                            id,
-                            _bt: 1
-                        })
-                    });
-                    const flagData = await flagRes.json();
-                    if (flagData.status === 'success') {
-                        const row = el?.closest('.order-item');
-                        if (row) {
-                            row.querySelectorAll('.fw-bold, .text-muted').forEach(e => e.classList.add('ticket-used'));
-                            el.classList.add('ticket-used');
-                        }
 
-                        // Disable Print All Ticket btn if no more active tickets
-                        const activeTickets = document.querySelectorAll('.btn-remove-order:not(.ticket-used)');
-                        if (activeTickets.length === 0) {
-                            const btnAll = document.getElementById('btnPrintTicketAll');
-                            if (btnAll) btnAll.disabled = true;
-                        }
+                if (!ok) throw new Error('Data gagal dikirim ke printer. Coba reconnect printer.');
+
+                const flagRes = await fetch('{{ route('transaction.print-ticket') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        id,
+                        _bt: 1
+                    })
+                });
+                const flagData = await flagRes.json();
+                if (flagData.status === 'success') {
+                    const row = el?.closest('.order-item');
+                    if (row) {
+                        row.querySelectorAll('.fw-bold, .text-muted').forEach(e => e.classList.add('ticket-used'));
+                        el.classList.add('ticket-used');
                     }
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Tiket dicetak!',
-                        timer: 1000,
-                        showConfirmButton: false,
-                        customClass: {
-                            confirmButton: 'btn btn-primary waves-effect waves-light'
-                        },
-                        buttonsStyling: false
-                    });
+
+                    const activeTickets = document.querySelectorAll('.btn-remove-order:not(.ticket-used)');
+                    if (activeTickets.length === 0) {
+                        const btnAll = document.getElementById('btnPrintTicketAll');
+                        if (btnAll) btnAll.disabled = true;
+                    }
                 }
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Tiket dicetak!',
+                    timer: 1000,
+                    showConfirmButton: false,
+                    customClass: {
+                        confirmButton: 'btn btn-primary waves-effect waves-light'
+                    },
+                    buttonsStyling: false
+                });
             } catch (e) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Gagal',
+                    title: 'Gagal Cetak',
                     text: e.message,
                     customClass: {
                         confirmButton: 'btn btn-primary waves-effect waves-light'
