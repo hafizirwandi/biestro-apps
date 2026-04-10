@@ -43,10 +43,10 @@ Route::get('/', function () {
         $user = Auth::user();
 
         if ($user->hasRole('cashier')) {
-            return redirect()->intended('/transaction');
+            return redirect('/transaction');
         }
 
-        return redirect()->intended('/home');
+        return redirect('/home');
     }
 
     return redirect('/login')->withErrors([

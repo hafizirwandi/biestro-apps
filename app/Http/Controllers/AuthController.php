@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-
     public function loginFormAdmin()
     {
         return view('layouts.login.app');
@@ -19,35 +18,35 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-
         //dd($request->all());
         $credentials = $request->only('username', 'password');
-
 
         if (Auth::attempt($credentials)) {
             // Authentication passed...
             // Periksa status pengguna
             $user = Auth::user();
             if ($user->status == 1) {
-
                 if ($user->hasRole('cashier')) {
-                    return redirect()->intended('/transaction');
+                    return redirect('/transaction');
                 } else {
                     return redirect()->intended('/home');
                 }
             } else {
                 Auth::logout(); // Logout jika status pengguna bukan 1
-                return redirect()->back()->withErrors(['username' => 'Your account is not active']);
+                return redirect()
+                    ->back()
+                    ->withErrors(['username' => 'Your account is not active']);
             }
         }
-        return redirect()->back()->withInput()->withErrors(['username' => 'Invalid username or password']);
+        return redirect()
+            ->back()
+            ->withInput()
+            ->withErrors(['username' => 'Invalid username or password']);
     }
 
     public function logout(Request $request)
     {
         $guard = 'web';
-
-
 
         Auth::logout();
 
