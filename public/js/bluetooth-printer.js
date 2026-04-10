@@ -268,29 +268,29 @@ window.BTPrinter = {
         const log = logFn || (() => {});
         if (!this.characteristic) {
             log('❌ Printer belum terkoneksi!', 'error');
-            return false;
+            throw new Error('Printer belum terkoneksi');
         }
         
-        // Printer thermal POS Bluetooth murah memiliki BLE GATT buffer & memori kecil.
-        // Jika CHUNK terlalu besar, data struk yang panjang akan menyebabkan GATT overflow dan gagal dikirim.
-        // Solusi: Kurangi CHUNK menjadi 100 bytes (atau kelipatan kecil) dan beri delay antar pengiriman.
-        const CHUNK = 100;
+        // Printer thermal POS Bluetooth BLE 4.0 seringkali memiliki limit MTU absolut 20 bytes per paket!
+        // Jika browser/OS HP tidak otomatis memecah MTU, pengiriman > 20 bytes akan langsung "GATT operation failed".
+        const CHUNK = 20;
         try {
             for (let i = 0; i < bytes.length; i += CHUNK) {
                 const chunk = bytes.slice(i, i + CHUNK);
-                if (this.characteristic.properties.writeWithoutResponse) {
-                    await this.characteristic.writeValueWithoutResponse(chunk);
-                } else {
+                if (this.characteristic.properties.write) {
+                    // writeValue mengunggu balasan konfirmasi dari printer, ini paling stabil!
                     await this.characteristic.writeValue(chunk);
+                } else if (this.characteristic.properties.writeWithoutResponse) {
+                    await this.characteristic.writeValueWithoutResponse(chunk);
+                    // Karena tanpa response, kita paksa delay agar buffer printer tidak meluap
+                    await new Promise(r => setTimeout(r, 10));
                 }
-                
-                // Jeda 20ms antar chunk untuk memberi nafas bagi ESP/chip memproses buffer
-                await new Promise(r => setTimeout(r, 20));
             }
             return true;
         } catch (e) {
             log(`❌ Send gagal: ${e.message}`, 'error');
-            return false;
+            // WAJIB lempar (throw) error bawaan browser agar kelihatan aslinya
+            throw new Error(`Koneksi Bluetooth terputus/gagal: ${e.message}`);
         }
     },
 

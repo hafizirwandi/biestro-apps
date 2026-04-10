@@ -388,9 +388,7 @@
 
                 // 3. Build ESC/POS & kirim ke printer
                 const bytes = window.BTPrinter.buildReceipt(data);
-                const ok = await window.BTPrinter.sendData(bytes);
-
-                if (!ok) throw new Error('Data gagal dikirim ke printer. Coba reconnect printer.');
+                await window.BTPrinter.sendData(bytes);
 
                 // 4. Flag di server
                 await fetch('{{ route('transaction.print-bill') }}', {

@@ -1596,9 +1596,7 @@
                 const data = await res.json();
 
                 const bytes = window.BTPrinter.buildReceipt(data);
-                const ok = await window.BTPrinter.sendData(bytes);
-
-                if (!ok) throw new Error('Data gagal dikirim ke printer. Coba reconnect printer.');
+                await window.BTPrinter.sendData(bytes);
 
                 await fetch('{{ route('transaction.print-bill') }}', {
                     method: 'POST',
@@ -1684,9 +1682,7 @@
                 const data = await res.json();
 
                 const bytes = window.BTPrinter.buildTicket(data);
-                const ok = await window.BTPrinter.sendData(bytes);
-
-                if (!ok) throw new Error('Data gagal dikirim ke printer. Coba reconnect printer.');
+                await window.BTPrinter.sendData(bytes);
 
                 const flagRes = await fetch('{{ route('transaction.print-ticket') }}', {
                     method: 'POST',
@@ -1759,10 +1755,13 @@
                 let printed = 0;
                 for (const t of tickets) {
                     const bytes = window.BTPrinter.buildTicket(t);
-                    const ok = await window.BTPrinter.sendData(bytes);
-                    if (ok) {
+                    try {
+                        await window.BTPrinter.sendData(bytes);
                         printed++;
                         await new Promise(r => setTimeout(r, 400));
+                    } catch (err) {
+                        console.warn('Gagal memprint tiket sebagian:', err);
+                        throw err;
                     }
                 }
 
