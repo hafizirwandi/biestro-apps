@@ -98,6 +98,18 @@
              </div>
          </div>
      </div>
+     <div class="row mt-3 g-4">
+         <div class="col-lg-12">
+             <div class="card shadow-sm border-0">
+                 <div class="card-header bg-white">
+                     <h6 class="mb-0">Top 5 Wahana Terpopuler</h6>
+                 </div>
+                 <div class="card-body">
+                     <ol id="topWahanaList" class="mb-0 ps-3"></ol>
+                 </div>
+             </div>
+         </div>
+     </div>
  @endsection
  @section('script')
      <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
@@ -235,6 +247,18 @@
                          chartTicketFree.render();
                      } else {
                          chartTicketFree.updateOptions(optionsTicketFree);
+                     }
+
+                     const topWahanaList = document.getElementById('topWahanaList');
+                     if (topWahanaList) {
+                         const combined = (data.ticket.categories ?? []).map((name, i) => ({
+                             name,
+                             total: data.ticket.data[i] ?? 0
+                         }));
+                         combined.sort((a, b) => b.total - a.total);
+                         topWahanaList.innerHTML = combined.slice(0, 5).map(w =>
+                             `<li class="mb-1">${w.name} <span class="fw-bold">(${w.total})</span></li>`
+                         ).join('') || '<li class="text-muted">Belum ada data</li>';
                      }
 
                  })

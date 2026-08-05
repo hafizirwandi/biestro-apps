@@ -51,7 +51,14 @@ class PermissionSeeder extends Seeder
         'filemanager-view',
         'audit-trace',
         'report-transaction',
-        'report-ticket'
+        'report-ticket',
+        'report-revenue',
+        'report-popular-wahana',
+        'scan-access',
+        'scan-unflag',
+        'playground-access',
+        'playground-input',
+        'playground-report',
     ];
     public function run(): void
     {
@@ -66,5 +73,11 @@ class PermissionSeeder extends Seeder
         foreach ($this->permissions as $perm) {
             $role->givePermissionTo($perm);
         }
+
+        $scanRole = Role::updateOrCreate(['name' => 'scan']);
+        $scanRole->givePermissionTo(['scan-access']);
+
+        $playgroundRole = Role::updateOrCreate(['name' => 'playground']);
+        $playgroundRole->givePermissionTo(['playground-access', 'playground-input', 'playground-report']);
     }
 }

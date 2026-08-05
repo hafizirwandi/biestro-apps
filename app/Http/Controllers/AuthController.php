@@ -28,6 +28,10 @@ class AuthController extends Controller
             if ($user->status == 1) {
                 if ($user->hasRole('cashier')) {
                     return redirect('/transaction');
+                } elseif ($user->hasRole('scan')) {
+                    return redirect('/scan');
+                } elseif ($user->hasRole('playground')) {
+                    return redirect('/playground');
                 } else {
                     return redirect()->intended('/home');
                 }

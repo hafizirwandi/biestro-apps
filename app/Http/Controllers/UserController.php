@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Store;
+use App\Models\Wahana;
 use App\Models\UnitUsaha;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,12 +23,14 @@ class UserController extends Controller
     public function create()
     {
         $data['role'] = Role::all();
+        $data['wahanas'] = Wahana::all();
         return view('user.create', $data);
     }
     public function edit($id)
     {
-        $q = User::with(['roles'])->findOrFail($id);
+        $q = User::with(['roles', 'wahanas'])->findOrFail($id);
         $data['role'] = Role::all();
+        $data['wahanas'] = Wahana::all();
         $data['data'] = $q;
 
         return view('user.edit', $data);
@@ -73,6 +76,15 @@ class UserController extends Controller
                 $user->assignRole($request->input('role'));
                 $msg = 'User berhasil dibuat';
             }
+
+            $user->wahanas()->sync($request->input('wahana_ids', []));
+
+            if ($request->boolean('scan_unflag_authorized')) {
+                $user->givePermissionTo('scan-unflag');
+            } else {
+                $user->revokePermissionTo('scan-unflag');
+            }
+
             return back()->with('success', $msg);
         } catch (\Exception $e) {
             return $e->getMessage();

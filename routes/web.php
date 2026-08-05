@@ -22,6 +22,8 @@ use App\Http\Controllers\TicketPackageController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\WahanaController;
 use App\Http\Controllers\PrinterTestController;
+use App\Http\Controllers\ScanController;
+use App\Http\Controllers\PlaygroundController;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,6 +46,14 @@ Route::get('/', function () {
 
         if ($user->hasRole('cashier')) {
             return redirect('/transaction');
+        }
+
+        if ($user->hasRole('scan')) {
+            return redirect('/scan');
+        }
+
+        if ($user->hasRole('playground')) {
+            return redirect('/playground');
         }
 
         return redirect('/home');
@@ -265,12 +275,34 @@ Route::middleware('auth:web')->group(function () {
             Route::get('/shift-data', [TransactionController::class, 'getShiftData'])->name('transaction.shift-data');
         });
 
+    Route::prefix('scan')
+        ->middleware('can:scan-access')
+        ->group(function () {
+            Route::get('/', [ScanController::class, 'index'])->name('scan');
+            Route::post('/', [ScanController::class, 'scan'])->name('scan.scan');
+            Route::post('/unflag', [ScanController::class, 'unflag'])->name('scan.unflag');
+        });
+
+    Route::prefix('playground')
+        ->middleware('can:playground-access')
+        ->group(function () {
+            Route::get('/', [PlaygroundController::class, 'index'])->name('playground');
+            Route::post('/store', [PlaygroundController::class, 'store'])->name('playground.store')->middleware('can:playground-input');
+            Route::get('/active-sessions', [PlaygroundController::class, 'activeSessions'])->name('playground.active-sessions');
+            Route::post('/{id}/call-manual', [PlaygroundController::class, 'callManual'])->name('playground.call-manual');
+            Route::post('/{id}/stop-calling', [PlaygroundController::class, 'stopCalling'])->name('playground.stop-calling');
+            Route::post('/{id}/finish', [PlaygroundController::class, 'finish'])->name('playground.finish');
+            Route::get('/report', [PlaygroundController::class, 'report'])->name('playground.report')->middleware('can:playground-report');
+        });
+
     Route::prefix('report')->group(function () {
         Route::get('/transaction', [ReportController::class, 'transaction'])->name('report.transaction');
         Route::get('/ticket', [ReportController::class, 'ticket'])->name('report.ticket');
         Route::get('/shift', [ReportController::class, 'shift'])->name('report.shift');
         Route::get('/items', [ReportController::class, 'items'])->name('report.items');
         Route::get('/payment', [ReportController::class, 'payment'])->name('report.payment');
+        Route::get('/revenue', [ReportController::class, 'revenue'])->name('report.revenue')->middleware('can:report-revenue');
+        Route::get('/popular-wahana', [ReportController::class, 'popularWahana'])->name('report.popular-wahana')->middleware('can:report-popular-wahana');
 
         Route::get('/detail-transaction-modal/{id}', [ReportController::class, 'detailTransactionModal'])->name('report.detail-transaction-modal');
     });

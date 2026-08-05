@@ -37,6 +37,22 @@ class EscPos {
     }
     dashedLine(ch = '-', len = 32) { return this.textLine(ch.repeat(len)); }
 
+    // Print a QR code (ESC/POS GS ( k command set, model 2)
+    qr(content, size = 5) {
+        const data = new TextEncoder().encode(String(content));
+        const storeLen = data.length + 3;
+        const pL = storeLen & 0xFF;
+        const pH = (storeLen >> 8) & 0xFF;
+
+        this.buffer.push(GS, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00); // model 2
+        this.buffer.push(GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, size); // module size
+        this.buffer.push(GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 48); // EC level L
+        this.buffer.push(GS, 0x28, 0x6B, pL, pH, 0x31, 0x50, 0x30); // store data
+        data.forEach(b => this.buffer.push(b));
+        this.buffer.push(GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30); // print
+        return this;
+    }
+
     itemRow(name, qty, price, subtotal) {
         const rp = n => 'Rp.' + Number(n).toLocaleString('id-ID');
         this.textLine(String(name).substring(0, 30));
@@ -336,7 +352,9 @@ window.BTPrinter = {
         esc.lf();
         esc.align(0).textLine(data.ticket_code ?? '');
         if (data.created_at) esc.textLine(data.created_at);
-        esc.lf().dashedLine();
+        esc.lf().align(1);
+        if (data.ticket_code) esc.qr(data.ticket_code);
+        esc.align(0).lf().dashedLine();
         esc.align(1);
         if (data.footer) esc.textLines(data.footer);
         esc.lf(4).cut();

@@ -198,6 +198,8 @@ class CustomReceiptPrinter
             $this->printer->selectPrintMode(Printer::MODE_FONT_B);
             $this->printer->text($data->created_at);
             $this->printer->feed(1);
+            $this->printer->setJustification(Printer::JUSTIFY_CENTER);
+            $this->printer->qrCode($data->ticket_code, Printer::QR_ECLEVEL_L, 5, Printer::QR_MODEL_2);
             $this->printer->selectPrintMode();
             $this->printer->text($this->printDashedLine());
             $this->printer->text("\n");
@@ -248,6 +250,8 @@ class CustomReceiptPrinter
                 $this->printer->selectPrintMode(Printer::MODE_FONT_B);
                 $this->printer->text($data->created_at);
                 $this->printer->feed(1);
+                $this->printer->setJustification(Printer::JUSTIFY_CENTER);
+                $this->printer->qrCode($data->ticket_code, Printer::QR_ECLEVEL_L, 5, Printer::QR_MODEL_2);
                 $this->printer->selectPrintMode();
                 $this->printer->text($this->printDashedLine());
                 $this->printer->text("\n");

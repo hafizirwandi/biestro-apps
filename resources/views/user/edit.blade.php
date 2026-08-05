@@ -28,7 +28,7 @@
       </div>
       <div class="col-12 col-md-6">
           <label class="form-label">Role</label>
-          <select name="role" class="form-control" required>
+          <select name="role" id="roleSelect" class="form-control" required>
               <option value="">-- Pilih --</option>
               @foreach ($role as $r)
                   <option value="{{ $r->name }}"
@@ -55,6 +55,26 @@
           <small class="text-muted">Isi jika role Supervisor</small>
       </div>
 
+      <div class="col-12 col-md-6 d-none" id="wahanaWrapper">
+          <label class="form-label">Wahana yang Boleh Discan</label>
+          <select name="wahana_ids[]" class="select2 form-control" multiple>
+              @foreach ($wahanas as $w)
+                  <option value="{{ $w->id }}" {{ $data->wahanas->contains('id', $w->id) ? 'selected' : '' }}>
+                      {{ $w->name }}</option>
+              @endforeach
+          </select>
+      </div>
+
+      <div class="col-12">
+          <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="scan_unflag_authorized" value="1"
+                  id="scanUnflagEdit" {{ $data->can('scan-unflag') ? 'checked' : '' }}>
+              <label class="form-check-label" for="scanUnflagEdit">
+                  Otorisasi Unflag Tiket (bisa membatalkan status "sudah digunakan" via SPV PIN)
+              </label>
+          </div>
+      </div>
+
 
       <div class="col-12 text-center">
           <button type="submit" class="btn btn-primary me-sm-3 me-1">Submit</button>
@@ -63,3 +83,16 @@
           </button>
       </div>
   </form>
+  <script>
+      (function() {
+          $('#wahanaWrapper .select2').select2({
+              dropdownParent: $('#myModal')
+          });
+
+          function toggleWahana() {
+              $('#wahanaWrapper').toggleClass('d-none', $('#roleSelect').val() !== 'scan');
+          }
+          $('#roleSelect').off('change.wahanaToggle').on('change.wahanaToggle', toggleWahana);
+          toggleWahana();
+      })();
+  </script>

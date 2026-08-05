@@ -42,4 +42,9 @@ class User extends Authenticatable
     {
         return LogOptions::defaults()->useLogName('users')->logFillable();
     }
+
+    public function wahanas()
+    {
+        return $this->belongsToMany(Wahana::class, 'user_wahanas');
+    }
 }

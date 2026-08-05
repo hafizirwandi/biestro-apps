@@ -23,4 +23,9 @@ class Wahana extends Model
     {
         return $this->belongsToMany(TicketPackage::class, 'ticket_package_wahanas');
     }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'user_wahanas');
+    }
 }

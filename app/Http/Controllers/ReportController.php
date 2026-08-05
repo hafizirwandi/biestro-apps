@@ -4,14 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\IssuedTicket;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Models\Wahana;
+use App\Http\Controllers\Concerns\ResolvesPeriod;
 use Illuminate\Http\Request;
 use Intervention\Image\Colors\Rgb\Channels\Red;
 
 class ReportController extends Controller
 {
+    use ResolvesPeriod;
+
     public function transaction(Request $request)
     {
         $query = Transaction::query()->where('payment_status', 'paid');
@@ -160,5 +164,94 @@ class ReportController extends Controller
 
         $data['data'] = $report;
         return view('report.payment', $data);
+    }
+
+    public function revenue(Request $request)
+    {
+        [$start, $end, $label, $type] = $this->resolvePeriod($request);
+
+        $transactions = Transaction::where('payment_status', 'paid')
+            ->whereBetween('paid_at', [$start, $end])
+            ->get();
+
+        $bucketFormat = match ($type) {
+            'day' => 'H',
+            'year' => 'Y-m',
+            default => $start->diffInDays($end) > 62 ? 'Y-m' : 'Y-m-d',
+        };
+
+        $grouped = $transactions->groupBy(function ($item) use ($bucketFormat) {
+            return Carbon::parse($item->paid_at)->format($bucketFormat);
+        });
+
+        $rows = [];
+        if ($type === 'day') {
+            foreach (range(0, 23) as $hour) {
+                $key = str_pad($hour, 2, '0', STR_PAD_LEFT);
+                $bucket = $grouped->get($key);
+                $rows[] = [
+                    'label' => $key . ':00',
+                    'count' => $bucket ? $bucket->count() : 0,
+                    'total' => $bucket ? $bucket->sum('total_amount') : 0,
+                ];
+            }
+        } elseif ($bucketFormat === 'Y-m') {
+            $period = CarbonPeriod::create($start->copy()->startOfMonth(), '1 month', $end);
+            foreach ($period as $date) {
+                $key = $date->format('Y-m');
+                $bucket = $grouped->get($key);
+                $rows[] = [
+                    'label' => $date->format('F Y'),
+                    'count' => $bucket ? $bucket->count() : 0,
+                    'total' => $bucket ? $bucket->sum('total_amount') : 0,
+                ];
+            }
+        } else {
+            $period = CarbonPeriod::create($start, $end);
+            foreach ($period as $date) {
+                $key = $date->format('Y-m-d');
+                $bucket = $grouped->get($key);
+                $rows[] = [
+                    'label' => $date->format('d M Y'),
+                    'count' => $bucket ? $bucket->count() : 0,
+                    'total' => $bucket ? $bucket->sum('total_amount') : 0,
+                ];
+            }
+        }
+
+        $data['rows'] = $rows;
+        $data['label'] = $label;
+        $data['grandCount'] = $transactions->count();
+        $data['grandTotal'] = $transactions->sum('total_amount');
+
+        return view('report.revenue', $data);
+    }
+
+    public function popularWahana(Request $request)
+    {
+        [$start, $end, $label, $type] = $this->resolvePeriod($request);
+
+        $query = IssuedTicket::whereBetween('created_at', [$start, $end]);
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            if ($request->status == 'sold') {
+                $query->whereNull('free_gift_rule_id');
+            }
+            if ($request->status == 'free') {
+                $query->whereNotNull('free_gift_rule_id');
+            }
+        }
+
+        $ranking = $query->selectRaw('wahana_id, COUNT(*) as total')
+            ->groupBy('wahana_id')
+            ->with('wahana:id,name,key')
+            ->orderByDesc('total')
+            ->get();
+
+        $data['data'] = $ranking;
+        $data['label'] = $label;
+        $data['grandTotal'] = $ranking->sum('total');
+
+        return view('report.popular-wahana', $data);
     }
 }

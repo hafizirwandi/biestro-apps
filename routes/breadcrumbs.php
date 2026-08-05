@@ -111,6 +111,18 @@ Breadcrumbs::for('report.payment', function (BreadcrumbTrail $trail) {
     $trail->push('Report / Payment Methods', route('report.payment'));
 });
 
+Breadcrumbs::for('report.revenue', function (BreadcrumbTrail $trail) {
+    $trail->push('Report / Omset', route('report.revenue'));
+});
+
+Breadcrumbs::for('report.popular-wahana', function (BreadcrumbTrail $trail) {
+    $trail->push('Report / Wahana Terpopuler', route('report.popular-wahana'));
+});
+
+Breadcrumbs::for('playground.report', function (BreadcrumbTrail $trail) {
+    $trail->push('Report / Playground', route('playground.report'));
+});
+
 Breadcrumbs::for('counter', function (BreadcrumbTrail $trail) {
     $trail->push('Counter', route('counter'));
 });

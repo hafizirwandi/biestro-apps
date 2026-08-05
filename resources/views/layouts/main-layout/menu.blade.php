@@ -112,7 +112,7 @@
                       </a>
                   </li>
               @endcan
-              @canany(['report-transaction', 'report-ticket'])
+              @canany(['report-transaction', 'report-ticket', 'report-revenue', 'report-popular-wahana'])
                   <li class="menu-item {{ isDropdown(['report*']) }}">
                       <a href="javascript:void(0);" class="menu-link menu-toggle">
                           <i class="menu-icon tf-icons ti ti-report"></i>
@@ -132,6 +132,30 @@
                               <li class="menu-item {{ request()->routeIs('report.ticket') ? 'active' : '' }}">
                                   <a href="{{ route('report.ticket') }}" class="menu-link">
                                       <div data-i18n="Ticket">Ticket</div>
+                                  </a>
+                              </li>
+                          @endcan
+
+                          @can('report-revenue')
+                              <li class="menu-item {{ request()->routeIs('report.revenue') ? 'active' : '' }}">
+                                  <a href="{{ route('report.revenue') }}" class="menu-link">
+                                      <div data-i18n="Omset">Omset</div>
+                                  </a>
+                              </li>
+                          @endcan
+
+                          @can('report-popular-wahana')
+                              <li class="menu-item {{ request()->routeIs('report.popular-wahana') ? 'active' : '' }}">
+                                  <a href="{{ route('report.popular-wahana') }}" class="menu-link">
+                                      <div data-i18n="Wahana Terpopuler">Wahana Terpopuler</div>
+                                  </a>
+                              </li>
+                          @endcan
+
+                          @can('playground-report')
+                              <li class="menu-item {{ request()->routeIs('playground.report') ? 'active' : '' }}">
+                                  <a href="{{ route('playground.report') }}" class="menu-link">
+                                      <div data-i18n="Playground">Playground</div>
                                   </a>
                               </li>
                           @endcan
