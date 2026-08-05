@@ -8,7 +8,7 @@
     <meta name="description" content="" />
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{{ setting('favicon') }}" />
+    <link rel="icon" type="image/jpeg" href="{{ setting('favicon') }}" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

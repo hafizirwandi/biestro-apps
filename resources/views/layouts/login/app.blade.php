@@ -13,7 +13,7 @@
     <meta name="description" content="" />
 
     <!-- Favicon -->
-    {{-- <link rel="icon" type="image/x-icon" href="{{ asset('favicon-mesjid-apps.png') }}" /> --}}
+    <link rel="icon" type="image/jpeg" href="{{ setting('favicon') }}" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -66,13 +66,13 @@
                     <div class="card-body">
                         <!-- Logo -->
                         <div class="app-brand justify-content-center mb-4 mt-2">
-                            <a href="{{ route('login') }}" class="app-brand-link gap-2">
+                            <a href="{{ route('login') }}" class="app-brand-link gap-2 flex-column text-center">
                                 <span class="app-brand-logo">
-                                    <img src="{{ setting('logo') }}" alt="">
-
+                                    <img style="width:88px;height:88px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 3px #e9a92e"
+                                        src="{{ setting('logo') }}" alt="{{ setting('apps_name') }}">
                                 </span>
-
-
+                                <span class="app-brand-text demo text-body fw-bold mt-2"
+                                    style="font-size:1.35rem;color:#26499a">{{ setting('apps_name') }}</span>
                             </a>
                         </div>
                         <!-- /Logo -->

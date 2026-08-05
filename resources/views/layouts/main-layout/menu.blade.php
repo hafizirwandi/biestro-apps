@@ -1,10 +1,11 @@
   <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
-      <div class="app-brand demo">
-          <a href="index.html" class="app-brand-link">
+      <div class="app-brand demo" style="border-bottom: 3px solid #e9a92e;">
+          <a href="index.html" class="app-brand-link gap-2">
               <span class="app-brand-logo">
-                  <img style="width:150px" src="{{ setting('logo') }}" alt="">
+                  <img style="width:42px;height:42px;border-radius:50%;object-fit:cover"
+                      src="{{ setting('logo') }}" alt="{{ setting('apps_name') }}">
               </span>
-              {{-- <span class="app-brand-text demo menu-text fw-bold">CAT</span> --}}
+              <span class="app-brand-text demo menu-text fw-bold" style="color:#26499a">{{ setting('apps_name') }}</span>
           </a>
 
           <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto">
