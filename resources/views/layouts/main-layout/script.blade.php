@@ -1,3 +1,8 @@
+ <script>
+     window.PRINT_MODE = @json(setting('print_mode') ?? 'bluetooth');
+     window.PRINT_BRIDGE_URL = @json(setting('print_bridge_url') ?: 'http://127.0.0.1:9100');
+ </script>
+
  <!-- Core JS -->
  <!-- build:js assets/vendor/js/core.js -->
 

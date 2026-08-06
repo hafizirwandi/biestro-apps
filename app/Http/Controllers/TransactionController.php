@@ -415,6 +415,12 @@ class TransactionController extends Controller
                 $printer = new CustomReceiptPrinter();
                 $printer->init(setting('connector_type'), setting('connector_descriptor'));
                 $printer->printTicketAll($tickets);
+            } elseif ($request->filled('ticket_ids')) {
+                // Web Bluetooth path reports exactly which tickets actually made it
+                // out of the printer — only flag those, not the whole transaction,
+                // so tickets that failed to print stay reprintable.
+                $printedIds = collect($request->input('ticket_ids'))->map(fn($id) => (int) $id);
+                $tickets = $tickets->whereIn('id', $printedIds);
             }
 
             foreach ($tickets as $r) {

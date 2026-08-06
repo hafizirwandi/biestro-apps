@@ -38,7 +38,9 @@ class EscPos {
     dashedLine(ch = '-', len = 32) { return this.textLine(ch.repeat(len)); }
 
     // Print a QR code (ESC/POS GS ( k command set, model 2)
-    qr(content, size = 5) {
+    // size: module dot size, 1-16 (printer-dependent). 8 fits comfortably on
+    // 58mm/80mm paper while being noticeably easier to scan than the old 5.
+    qr(content, size = 8) {
         const data = new TextEncoder().encode(String(content));
         const storeLen = data.length + 3;
         const pL = storeLen & 0xFF;
@@ -174,10 +176,46 @@ window.BTPrinter = {
         }
     },
 
+    // ── Print Bridge mode: check the local HTTP bridge instead of BLE ──────
+    async _bridgeHealthCheck(logFn) {
+        const log = logFn || (() => {});
+        const baseUrl = window.PRINT_BRIDGE_URL || 'http://127.0.0.1:9100';
+        try {
+            const res = await fetch(`${baseUrl}/health`, { signal: AbortSignal.timeout(3000) });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            log('🖨️ Print Bridge terdeteksi.', 'info');
+            return true;
+        } catch (e) {
+            throw new Error(`Print Bridge tidak terdeteksi di ${baseUrl}. Pastikan aplikasi Print Bridge (run.bat) sedang berjalan di komputer ini.`);
+        }
+    },
+
+    async _sendViaBridge(bytes, logFn) {
+        const log = logFn || (() => {});
+        const baseUrl = window.PRINT_BRIDGE_URL || 'http://127.0.0.1:9100';
+        try {
+            const res = await fetch(`${baseUrl}/print`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/octet-stream' },
+                body: bytes,
+            });
+            if (!res.ok) {
+                const errBody = await res.json().catch(() => null);
+                throw new Error(errBody?.message || `Print Bridge gagal (HTTP ${res.status})`);
+            }
+            return true;
+        } catch (e) {
+            log(`❌ Print via bridge gagal: ${e.message}`, 'error');
+            throw e;
+        }
+    },
+
     // ── Smart connect: silent if paired, popup ONLY if no device known ──
     // Call this before every print action.
     async connectOrReconnect(logFn) {
         const log = logFn || (() => {});
+
+        if (window.PRINT_MODE === 'bridge') return await this._bridgeHealthCheck(logFn);
 
         // Already connected — nothing to do
         if (this.isConnected && this.characteristic) return true;
@@ -227,6 +265,8 @@ window.BTPrinter = {
     // Uses navigator.bluetooth.getDevices() — returns previously paired devices
     async autoReconnect(logFn) {
         const log = logFn || (() => {});
+
+        if (window.PRINT_MODE === 'bridge') return false; // no BLE device to reconnect to
 
         if (!localStorage.getItem('btPrinterConnected')) return false;
         if (!navigator.bluetooth) return false;
@@ -282,6 +322,9 @@ window.BTPrinter = {
     // ── Send raw bytes ────────────────────────────────────────────
     async sendData(bytes, logFn) {
         const log = logFn || (() => {});
+
+        if (window.PRINT_MODE === 'bridge') return await this._sendViaBridge(bytes, logFn);
+
         if (!this.characteristic) {
             log('❌ Printer belum terkoneksi!', 'error');
             throw new Error('Printer belum terkoneksi');
@@ -298,8 +341,11 @@ window.BTPrinter = {
                     await this.characteristic.writeValue(chunk);
                 } else if (this.characteristic.properties.writeWithoutResponse) {
                     await this.characteristic.writeValueWithoutResponse(chunk);
-                    // Karena tanpa response, kita paksa delay agar buffer printer tidak meluap
-                    await new Promise(r => setTimeout(r, 10));
+                    // writeValueWithoutResponse() selesai begitu OS menerima paket untuk dikirim,
+                    // BUKAN begitu printer selesai mencetaknya ke buffer internalnya (biasanya kecil).
+                    // 10ms tidak cukup untuk printer thermal murah (~9600bps ≈ 1ms/byte); paket yang
+                    // datang lebih cepat dari printer bisa mencetaknya akan didrop diam-diam tanpa error.
+                    await new Promise(r => setTimeout(r, 30));
                 }
             }
             return true;
@@ -308,6 +354,71 @@ window.BTPrinter = {
             // WAJIB lempar (throw) error bawaan browser agar kelihatan aslinya
             throw new Error(`Koneksi Bluetooth terputus/gagal: ${e.message}`);
         }
+    },
+
+    // ── Print one ticket with retry + reconnect + cut settle delay ─
+    // Used by batch "print all tickets" flows so a single dropped GATT
+    // write doesn't abort the remaining tickets in the batch.
+    async printTicketWithRetry(data, logFn, maxAttempts = 3) {
+        const log = logFn || (() => {});
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                if (attempt > 1) {
+                    log(`⏳ Retry cetak tiket ${data.ticket_code ?? ''} (${attempt}/${maxAttempts})...`, 'warn');
+                    // A failed GATT write often means the characteristic/connection
+                    // dropped — try to recover it before retrying.
+                    if (!this.isConnected || !this.characteristic) {
+                        await this.connectOrReconnect(logFn);
+                    }
+                    await new Promise(r => setTimeout(r, 500 * attempt));
+                }
+                const bytes = this.buildTicket(data);
+                await this.sendData(bytes, logFn);
+                if (window.PRINT_MODE !== 'bridge') {
+                    // Paper feed + guillotine cut is a real mechanical operation;
+                    // give the BLE printer time to finish it before the next ticket's
+                    // init bytes arrive, or it may drop/garble them. Not needed in
+                    // bridge mode — the OS print spooler already queues jobs safely.
+                    await new Promise(r => setTimeout(r, 700));
+                }
+                return true;
+            } catch (e) {
+                log(`⚠️ Gagal cetak tiket ${data.ticket_code ?? ''} (percobaan ${attempt}): ${e.message}`, 'warn');
+            }
+        }
+        return false;
+    },
+
+    // ── Print MANY tickets as ONE combined print job (bridge mode only) ────
+    // Each Windows print job has its own dispatch/init overhead at the
+    // spooler; sending N tickets as N separate jobs is what made batch
+    // printing slow. Each ticket still ends with its own cut() (built by
+    // buildTicket), so they still come out as separate pieces of paper —
+    // only the transport is batched, not the physical output.
+    async printTicketsBatchViaBridge(ticketsData, logFn, maxAttempts = 2) {
+        const log = logFn || (() => {});
+        const parts = ticketsData.map(t => this.buildTicket(t));
+        const totalLen = parts.reduce((sum, p) => sum + p.length, 0);
+        const combined = new Uint8Array(totalLen);
+        let offset = 0;
+        for (const p of parts) {
+            combined.set(p, offset);
+            offset += p.length;
+        }
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                if (attempt > 1) {
+                    log(`⏳ Retry cetak batch (${attempt}/${maxAttempts})...`, 'warn');
+                    await new Promise(r => setTimeout(r, 500));
+                }
+                await this._sendViaBridge(combined, logFn);
+                return ticketsData.map(t => t.id);
+            } catch (e) {
+                log(`⚠️ Gagal cetak batch (percobaan ${attempt}): ${e.message}`, 'warn');
+            }
+        }
+        return [];
     },
 
     // ── Build receipt ESC/POS ─────────────────────────────────────

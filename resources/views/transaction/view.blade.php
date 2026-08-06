@@ -517,21 +517,38 @@
                 const res = await fetch(`{{ url('/printer/tickets-data') }}/${transactionId}`);
                 if (!res.ok) throw new Error('Gagal mengambil data tiket.');
                 const {
-                    tickets
+                    tickets: allTickets
                 } = await res.json();
 
-                // 3. Print one by one
-                let printed = 0;
-                for (const t of tickets) {
-                    const bytes = window.BTPrinter.buildTicket(t);
-                    const ok = await window.BTPrinter.sendData(bytes);
-                    if (ok) {
-                        printed++;
-                        await sleep(400);
-                    }
+                // Only print tickets that haven't succeeded yet — a retry after a
+                // partial failure shouldn't reprint ones that already came out.
+                const tickets = allTickets.filter(t => !t.count_print);
+                if (tickets.length === 0) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Semua tiket sudah dicetak',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    permanentlyDisabled = true;
+                    return;
                 }
 
-                // 3. Flag all on server
+                // 3. Print — bridge mode sends all tickets as ONE job (fast, avoids
+                // per-job spooler overhead); Bluetooth mode stays ticket-by-ticket
+                // with retry (BLE can't safely batch — MTU-limited, no partial retry).
+                let printedIds = [];
+                if (window.PRINT_MODE === 'bridge') {
+                    printedIds = await window.BTPrinter.printTicketsBatchViaBridge(tickets);
+                } else {
+                    for (const t of tickets) {
+                        const ok = await window.BTPrinter.printTicketWithRetry(t);
+                        if (ok) printedIds.push(t.id);
+                    }
+                }
+                const printed = printedIds.length;
+
+                // 4. Flag only the tickets that actually printed
                 if (printed > 0) {
                     const flagRes = await fetch('{{ route('transaction.print-ticket-all') }}', {
                         method: 'POST',
@@ -541,11 +558,12 @@
                         },
                         body: JSON.stringify({
                             transaction_id: transactionId,
+                            ticket_ids: printedIds,
                             _bt: 1
                         })
                     });
                     const flagData = await flagRes.json();
-                    if (flagData.status === 'success') {
+                    if (flagData.status === 'success' && printed === tickets.length) {
                         // Mark all as printed in UI
                         document.querySelectorAll('.order-item').forEach(row => {
                             row.querySelectorAll('.fw-bold, .text-muted').forEach(e => e.classList.add(
@@ -555,11 +573,20 @@
                         });
                         permanentlyDisabled = true; // keep button disabled
                     }
+                }
+
+                if (printed === tickets.length) {
                     Swal.fire({
                         icon: 'success',
                         title: `${printed} tiket dicetak!`,
                         timer: 1500,
                         showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: `${printed} dari ${tickets.length} tiket berhasil dicetak`,
+                        text: 'Sisanya gagal terkirim ke printer. Klik tombol lagi untuk mencetak sisa tiket.'
                     });
                 }
             } catch (e) {

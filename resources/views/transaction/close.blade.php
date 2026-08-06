@@ -285,6 +285,18 @@
             const dot = document.getElementById('printerDot');
             const status = document.getElementById('printerStatusText');
             const btn = document.getElementById('btnPairPrinter');
+
+            if (window.PRINT_MODE === 'bridge') {
+                // Print Bridge doesn't need pairing — printer readiness is
+                // checked at actual print time (connectOrReconnect -> /health).
+                dot.classList.add('connected');
+                status.textContent = 'Print Bridge aktif ✓';
+                status.classList.replace('text-muted', 'text-success');
+                btn.style.display = 'none';
+                return;
+            }
+
+            btn.style.display = '';
             if (window.BTPrinter?.isConnected) {
                 dot.classList.add('connected');
                 status.textContent = 'Printer terhubung ✓';

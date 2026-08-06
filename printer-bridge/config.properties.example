@@ -1,0 +1,8 @@
+# Salin file ini jadi "config.properties" di folder yang sama dengan printer-bridge.jar
+
+# Port lokal yang dipakai bridge (harus sama dengan Pengaturan > Print Bridge URL di aplikasi)
+port=9100
+
+# Nama printer PERSIS seperti yang muncul di Windows > Devices and Printers.
+# Kosongkan untuk pakai printer default Windows.
+printer=

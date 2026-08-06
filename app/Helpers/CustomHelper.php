@@ -207,6 +207,22 @@ function setting_field()
             'mod' => 'printer configuration',
         ],
         [
+            'label' => 'Print Mode (Tiket/Struk/Rekap Shift)',
+            'type' => 'select',
+            'options' => [
+                'bluetooth' => 'Bluetooth (Web Bluetooth langsung ke printer)',
+                'bridge' => 'Print Bridge (aplikasi lokal di komputer kasir)',
+            ],
+            'name' => 'print_mode',
+            'mod' => 'printer configuration',
+        ],
+        [
+            'label' => 'Print Bridge URL',
+            'type' => 'text',
+            'name' => 'print_bridge_url',
+            'mod' => 'printer configuration',
+        ],
+        [
             'label' => 'Header Receipt',
             'type' => 'text',
             'name' => 'header_receipt',

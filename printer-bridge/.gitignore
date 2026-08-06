@@ -1,0 +1,5 @@
+out/
+config.properties
+printer-bridge.log
+printer-bridge.pid
+printer-bridge.out.log
