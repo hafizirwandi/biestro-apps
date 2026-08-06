@@ -111,7 +111,7 @@
 @endsection
 
 @section('script')
-    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode"></script>
+    <script src="{{ asset('vuexy/assets/vendor/libs/html5-qrcode/html5-qrcode.js') }}"></script>
     <script>
         const csrfToken = '{{ csrf_token() }}';
         const scanUrl = '{{ route('scan.scan') }}';
@@ -157,10 +157,10 @@
 
         function submitScan() {
             const code = ticketCodeInput.value.trim();
-            if (!code || submitting) return;
+            if (!code || submitting) return Promise.resolve();
             submitting = true;
 
-            fetch(scanUrl, {
+            return fetch(scanUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -209,6 +209,11 @@
         // ── Camera scan ──────────────────────────────
         let html5QrCode = null;
         let cameraOpen = false;
+        // The QR success callback fires on EVERY decoded frame (~10/detik)
+        // while the same code is still in view — without this lock, one
+        // ticket in front of the camera for even half a second gets
+        // submitted many times before it can be pulled away.
+        let scanLocked = false;
         const toggleCameraBtn = document.getElementById('toggleCameraBtn');
         const cameraWrapper = document.getElementById('cameraWrapper');
 
@@ -217,7 +222,26 @@
                 stopCamera();
                 return;
             }
+
+            if (typeof Html5Qrcode === 'undefined') {
+                showResult('error', 'Library scanner (html5-qrcode.js) gagal dimuat. Cek koneksi/asset aplikasi.');
+                return;
+            }
+
+            // getUserMedia (akses kamera) hanya diizinkan browser di secure
+            // context (HTTPS atau localhost). Kalau app diakses lewat IP LAN
+            // polos (http://192.168.x.x), navigator.mediaDevices tidak ada
+            // sama sekali dan kamera tidak akan pernah bisa dibuka.
+            if (!window.isSecureContext || !navigator.mediaDevices) {
+                showResult('error',
+                    'Kamera tidak bisa diakses: halaman ini dibuka lewat ' + location.protocol +
+                    '//' + location.host + ', bukan HTTPS/localhost. Browser memblokir akses kamera di luar secure context. ' +
+                    'Gunakan flag Chrome "Insecure origins treated as secure" untuk origin ini, atau akses lewat HTTPS.');
+                return;
+            }
+
             cameraWrapper.classList.remove('d-none');
+            scanLocked = false;
             html5QrCode = new Html5Qrcode('qrReader');
             html5QrCode.start({
                     facingMode: 'environment'
@@ -226,15 +250,36 @@
                     qrbox: 250
                 },
                 (decodedText) => {
+                    if (scanLocked) return; // sudah ada scan yang lagi diproses/ditampilkan, abaikan frame ini
+                    scanLocked = true;
+
+                    // Bekukan kamera sesaat supaya QR yang sama tidak langsung
+                    // terdeteksi & terkirim ulang selagi belum sempat dijauhkan.
+                    if (typeof html5QrCode.pause === 'function') {
+                        try {
+                            html5QrCode.pause(true);
+                        } catch (e) {}
+                    }
+
                     ticketCodeInput.value = decodedText;
-                    submitScan();
+                    submitScan().finally(() => {
+                        setTimeout(() => {
+                            scanLocked = false;
+                            if (cameraOpen && html5QrCode && typeof html5QrCode.resume === 'function') {
+                                try {
+                                    html5QrCode.resume();
+                                } catch (e) {}
+                            }
+                        }, 1200);
+                    });
                 },
                 () => {}
             ).then(() => {
                 cameraOpen = true;
                 toggleCameraBtn.innerHTML = '<i class="ti ti-camera-off"></i> Tutup Kamera Scan';
-            }).catch(() => {
-                showResult('error', 'Tidak bisa mengakses kamera. Pastikan izin kamera sudah diberikan.');
+            }).catch((err) => {
+                console.error('Gagal membuka kamera:', err);
+                showResult('error', 'Tidak bisa mengakses kamera: ' + (err?.message || err));
                 cameraWrapper.classList.add('d-none');
             });
         });
@@ -244,6 +289,7 @@
                 html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
             }
             cameraOpen = false;
+            scanLocked = false;
             cameraWrapper.classList.add('d-none');
             toggleCameraBtn.innerHTML = '<i class="ti ti-camera"></i> Buka Kamera Scan';
         }
