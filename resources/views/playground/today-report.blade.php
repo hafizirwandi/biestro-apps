@@ -1,15 +1,16 @@
-@extends('layouts.main-layout.app')
-@section('title', 'Laporan Playground')
+@extends('layouts.main-layout.app-transaction')
+@section('title', 'Report Playground Hari Ini')
 
 @section('content')
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Report Playground — {{ $date }}</h4>
+        <span class="badge bg-label-primary">{{ $data->count() }} anak bermain</span>
+    </div>
 
-    @include('report.partials.period-filter')
-
-    <div class="card mb-4">
+    <div class="card shadow-sm border-0">
         <div class="card-body">
-            <h6 class="mb-3">{{ $label }}</h6>
             <div class="table-responsive">
-                <table class="datatable table table-striped">
+                <table class="table table-striped">
                     <thead>
                         <tr>
                             <th>Nama Anak</th>
@@ -29,8 +30,8 @@
                                 <td>{{ $r->gender == 'male' ? 'Laki-laki' : 'Perempuan' }}</td>
                                 <td>{{ $r->clothing_color }}</td>
                                 <td>{{ $r->duration_minutes }} menit</td>
-                                <td>{{ $r->started_at->format('d M Y H:i') }}</td>
-                                <td>{{ $r->picked_up_at ? $r->picked_up_at->format('d M Y H:i') : '-' }}</td>
+                                <td>{{ $r->started_at->format('H:i') }}</td>
+                                <td>{{ $r->picked_up_at ? $r->picked_up_at->format('H:i') : '-' }}</td>
                                 <td>
                                     @if ($r->status == 'picked_up')
                                         <span class="badge bg-success">Selesai</span>
@@ -44,7 +45,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-muted text-center">Tidak ada data untuk periode ini</td>
+                                <td colspan="8" class="text-muted text-center">Belum ada anak bermain hari ini</td>
                             </tr>
                         @endforelse
                     </tbody>

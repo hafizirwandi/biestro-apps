@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesPeriod;
 use App\Models\PlaygroundSession;
-use App\Models\Wahana;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -16,7 +15,6 @@ class PlaygroundController extends Controller
     {
         $today = Carbon::today();
 
-        $data['wahanas'] = Wahana::all();
         $data['stat'] = [
             'total' => PlaygroundSession::whereDate('started_at', $today)->count(),
             'ongoing' => PlaygroundSession::whereDate('started_at', $today)->where('status', 'ongoing')->count(),
@@ -34,13 +32,11 @@ class PlaygroundController extends Controller
             'gender' => 'required|in:male,female',
             'clothing_color' => 'required|string|max:255',
             'duration_minutes' => 'required|integer|min:1|max:600',
-            'wahana_id' => 'nullable|exists:wahanas,id',
         ]);
 
         $startedAt = now();
 
         PlaygroundSession::create([
-            'wahana_id' => $data['wahana_id'] ?? null,
             'child_name' => $data['child_name'],
             'gender' => $data['gender'],
             'clothing_color' => $data['clothing_color'],
@@ -52,6 +48,47 @@ class PlaygroundController extends Controller
         ]);
 
         return back()->with('success', 'Data anak berhasil ditambahkan');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $data = $request->validate([
+            'child_name' => 'required|string|max:255',
+            'gender' => 'required|in:male,female',
+            'clothing_color' => 'required|string|max:255',
+            'duration_minutes' => 'required|integer|min:1|max:600',
+        ]);
+
+        $session = PlaygroundSession::findOrFail($id);
+
+        $update = [
+            'child_name' => $data['child_name'],
+            'gender' => $data['gender'],
+            'clothing_color' => $data['clothing_color'],
+            'duration_minutes' => $data['duration_minutes'],
+        ];
+
+        // Recompute the countdown off the original start time — editing
+        // duration corrects/extends the session, it doesn't restart the clock.
+        if ($session->status !== 'picked_up') {
+            $newEndAt = $session->started_at->copy()->addMinutes($data['duration_minutes']);
+            $update['end_at'] = $newEndAt;
+            if ($newEndAt->isFuture()) {
+                $update['status'] = 'ongoing';
+                $update['is_calling'] = false;
+            }
+        }
+
+        $session->update($update);
+
+        return response()->json(['status' => 'success']);
+    }
+
+    public function destroy($id)
+    {
+        PlaygroundSession::findOrFail($id)->delete();
+
+        return response()->json(['status' => 'success']);
     }
 
     public function activeSessions()
@@ -121,7 +158,7 @@ class PlaygroundController extends Controller
     {
         [$start, $end, $label, $type] = $this->resolvePeriod($request);
 
-        $sessions = PlaygroundSession::with(['wahana', 'createdBy'])
+        $sessions = PlaygroundSession::with('createdBy')
             ->whereBetween('started_at', [$start, $end])
             ->latest('started_at')
             ->get();
@@ -130,5 +167,21 @@ class PlaygroundController extends Controller
         $data['label'] = $label;
 
         return view('playground.report', $data);
+    }
+
+    // Standalone daily report for playground-role users, opened in a new tab
+    // from the Playground page itself (that page uses the sidebar-less kiosk
+    // layout, so it needs its own direct link rather than the admin Report menu).
+    public function todayReport()
+    {
+        $today = Carbon::today();
+
+        $data['data'] = PlaygroundSession::with('createdBy')
+            ->whereDate('started_at', $today)
+            ->latest('started_at')
+            ->get();
+        $data['date'] = $today->format('d M Y');
+
+        return view('playground.today-report', $data);
     }
 }

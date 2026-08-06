@@ -292,7 +292,10 @@ Route::middleware('auth:web')->group(function () {
             Route::post('/{id}/call-manual', [PlaygroundController::class, 'callManual'])->name('playground.call-manual');
             Route::post('/{id}/stop-calling', [PlaygroundController::class, 'stopCalling'])->name('playground.stop-calling');
             Route::post('/{id}/finish', [PlaygroundController::class, 'finish'])->name('playground.finish');
+            Route::put('/{id}', [PlaygroundController::class, 'update'])->name('playground.update')->middleware('can:playground-input');
+            Route::delete('/{id}', [PlaygroundController::class, 'destroy'])->name('playground.destroy')->middleware('can:playground-input');
             Route::get('/report', [PlaygroundController::class, 'report'])->name('playground.report')->middleware('can:playground-report');
+            Route::get('/today-report', [PlaygroundController::class, 'todayReport'])->name('playground.today-report')->middleware('can:playground-report');
         });
 
     Route::prefix('report')->group(function () {

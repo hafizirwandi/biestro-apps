@@ -4,11 +4,19 @@
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">Playground</h4>
-        <div class="text-end">
-            <div class="text-muted small">{{ auth()->user()->name }}</div>
-            <a href="{{ route('logout') }}" class="btn btn-sm btn-label-secondary">
-                <i class="ti ti-logout ti-sm me-1"></i>Logout
-            </a>
+        <div class="text-end d-flex align-items-center gap-2">
+            @can('playground-report')
+                <a href="{{ route('playground.today-report') }}" target="_blank" rel="noopener"
+                    class="btn btn-sm btn-outline-primary">
+                    <i class="ti ti-report ti-sm me-1"></i>Report Hari Ini
+                </a>
+            @endcan
+            <div>
+                <div class="text-muted small">{{ auth()->user()->name }}</div>
+                <a href="{{ route('logout') }}" class="btn btn-sm btn-label-secondary">
+                    <i class="ti ti-logout ti-sm me-1"></i>Logout
+                </a>
+            </div>
         </div>
     </div>
 
@@ -53,7 +61,7 @@
                 <h6 class="mb-3">Tambah Anak</h6>
                 <form id="playgroundForm" class="row g-3" method="post" action="{{ route('playground.store') }}">
                     @csrf
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label class="form-label">Nama Anak</label>
                         <input type="text" name="child_name" class="form-control" required>
                     </div>
@@ -64,7 +72,7 @@
                             <option value="female">Perempuan</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Warna Baju</label>
                         <input type="text" name="clothing_color" class="form-control" placeholder="cth: Merah" required>
                     </div>
@@ -72,15 +80,6 @@
                         <label class="form-label">Lama Bermain (menit)</label>
                         <input type="number" name="duration_minutes" class="form-control" value="30" min="1" max="600"
                             required>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Wahana (opsional)</label>
-                        <select name="wahana_id" class="form-control">
-                            <option value="">-</option>
-                            @foreach ($wahanas as $w)
-                                <option value="{{ $w->id }}">{{ $w->name }}</option>
-                            @endforeach
-                        </select>
                     </div>
                     <div class="col-md-1 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary w-100"><i class="ti ti-plus"></i></button>
@@ -120,6 +119,46 @@
             </div>
         </div>
     </div>
+
+    @can('playground-input')
+        <div class="modal fade" id="editSessionModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Data Anak</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="editSessionId">
+                        <div class="mb-3">
+                            <label class="form-label">Nama Anak</label>
+                            <input type="text" id="editChildName" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Jenis Kelamin</label>
+                            <select id="editGender" class="form-control" required>
+                                <option value="male">Laki-laki</option>
+                                <option value="female">Perempuan</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Warna Baju</label>
+                            <input type="text" id="editClothingColor" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Lama Bermain (menit)</label>
+                            <input type="number" id="editDurationMinutes" class="form-control" min="1" max="600"
+                                required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="button" class="btn btn-primary" id="submitEditBtn">Simpan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endcan
 @endsection
 
 @section('script')
@@ -127,6 +166,8 @@
         const activeSessionsUrl = '{{ route('playground.active-sessions') }}';
         const callManualUrlBase = '{{ url('/playground') }}';
         const csrfToken = '{{ csrf_token() }}';
+        const canInput = @json(auth()->user()->can('playground-input'));
+        let sessionsById = {};
 
         const sessionsBody = document.getElementById('sessionsBody');
         const callingIndicator = document.getElementById('callingIndicator');
@@ -178,6 +219,48 @@
             }).then(() => loadSessions());
         }
 
+        function sendAction(path, method, body) {
+            return fetch(`${callManualUrlBase}/${path}`, {
+                method,
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: body ? JSON.stringify(body) : undefined
+            }).then(() => loadSessions());
+        }
+
+        function openEditModal(id) {
+            const s = sessionsById[id];
+            if (!s) return;
+            document.getElementById('editSessionId').value = s.id;
+            document.getElementById('editChildName').value = s.child_name;
+            document.getElementById('editGender').value = s.gender;
+            document.getElementById('editClothingColor').value = s.clothing_color;
+            document.getElementById('editDurationMinutes').value = s.duration_minutes;
+            $('#editSessionModal').modal('show');
+        }
+
+        function deleteSession(id) {
+            const s = sessionsById[id];
+            Swal.fire({
+                icon: 'warning',
+                title: 'Hapus data anak?',
+                text: `Data "${s ? s.child_name : ''}" akan dihapus permanen.`,
+                showCancelButton: true,
+                confirmButtonText: 'Hapus',
+                cancelButtonText: 'Batal',
+                customClass: {
+                    confirmButton: 'btn btn-danger me-2',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false
+            }).then((result) => {
+                if (result.isConfirmed) sendAction(id, 'DELETE');
+            });
+        }
+
         function loadSessions() {
             fetch(activeSessionsUrl, {
                     headers: {
@@ -201,10 +284,13 @@
             let ongoing = 0,
                 timeUp = 0;
 
+            sessionsById = {};
+
             if (sessions.length === 0) {
                 sessionsBody.innerHTML = '<tr><td colspan="7" class="text-muted text-center">Belum ada anak bermain hari ini</td></tr>';
             } else {
                 sessionsBody.innerHTML = sessions.map(s => {
+                    sessionsById[s.id] = s;
                     if (s.status === 'ongoing') ongoing++;
                     if (s.status === 'time_up') timeUp++;
 
@@ -225,6 +311,10 @@
                         `<button class="btn btn-sm btn-outline-secondary" onclick="postAction('${s.id}/stop-calling')">Hentikan Pemanggilan</button>` :
                         `<button class="btn btn-sm btn-outline-warning" onclick="postAction('${s.id}/call-manual')">Panggil Manual</button>`;
 
+                    const manageBtns = canInput ? `
+                            <button class="btn btn-sm btn-outline-primary" onclick="openEditModal(${s.id})"><i class="ti ti-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteSession(${s.id})"><i class="ti ti-trash"></i></button>` : '';
+
                     return `<tr class="${s.status === 'time_up' ? 'table-danger' : ''}">
                         <td>${s.child_name}</td>
                         <td>${genderLabel}</td>
@@ -235,6 +325,7 @@
                         <td class="d-flex gap-1 flex-wrap">
                             ${callBtn}
                             <button class="btn btn-sm btn-success" onclick="postAction('${s.id}/finish')">Sudah Diambil</button>
+                            ${manageBtns}
                         </td>
                     </tr>`;
                 }).join('');
@@ -260,6 +351,16 @@
                     statTotal.textContent = (parseInt(statTotal.textContent) || 0) + 1;
                     loadSessions();
                 });
+        });
+
+        document.getElementById('submitEditBtn')?.addEventListener('click', function() {
+            const id = document.getElementById('editSessionId').value;
+            sendAction(id, 'PUT', {
+                child_name: document.getElementById('editChildName').value.trim(),
+                gender: document.getElementById('editGender').value,
+                clothing_color: document.getElementById('editClothingColor').value.trim(),
+                duration_minutes: parseInt(document.getElementById('editDurationMinutes').value, 10),
+            }).then(() => $('#editSessionModal').modal('hide'));
         });
 
         loadSessions();
