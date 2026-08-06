@@ -119,6 +119,10 @@ Breadcrumbs::for('report.popular-wahana', function (BreadcrumbTrail $trail) {
     $trail->push('Report / Wahana Terpopuler', route('report.popular-wahana'));
 });
 
+Breadcrumbs::for('report.ticket-usage', function (BreadcrumbTrail $trail) {
+    $trail->push('Report / Penggunaan Tiket', route('report.ticket-usage'));
+});
+
 Breadcrumbs::for('playground.report', function (BreadcrumbTrail $trail) {
     $trail->push('Report / Playground', route('playground.report'));
 });

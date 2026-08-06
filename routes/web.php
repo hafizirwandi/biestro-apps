@@ -303,6 +303,7 @@ Route::middleware('auth:web')->group(function () {
         Route::get('/payment', [ReportController::class, 'payment'])->name('report.payment');
         Route::get('/revenue', [ReportController::class, 'revenue'])->name('report.revenue')->middleware('can:report-revenue');
         Route::get('/popular-wahana', [ReportController::class, 'popularWahana'])->name('report.popular-wahana')->middleware('can:report-popular-wahana');
+        Route::get('/ticket-usage', [ReportController::class, 'ticketUsage'])->name('report.ticket-usage')->middleware('can:report-ticket-usage');
 
         Route::get('/detail-transaction-modal/{id}', [ReportController::class, 'detailTransactionModal'])->name('report.detail-transaction-modal');
     });

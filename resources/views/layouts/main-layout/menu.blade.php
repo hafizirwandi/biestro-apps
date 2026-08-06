@@ -113,7 +113,7 @@
                       </a>
                   </li>
               @endcan
-              @canany(['report-transaction', 'report-ticket', 'report-revenue', 'report-popular-wahana'])
+              @canany(['report-transaction', 'report-ticket', 'report-revenue', 'report-popular-wahana', 'report-ticket-usage', 'playground-report'])
                   <li class="menu-item {{ isDropdown(['report*']) }}">
                       <a href="javascript:void(0);" class="menu-link menu-toggle">
                           <i class="menu-icon tf-icons ti ti-report"></i>
@@ -149,6 +149,14 @@
                               <li class="menu-item {{ request()->routeIs('report.popular-wahana') ? 'active' : '' }}">
                                   <a href="{{ route('report.popular-wahana') }}" class="menu-link">
                                       <div data-i18n="Wahana Terpopuler">Wahana Terpopuler</div>
+                                  </a>
+                              </li>
+                          @endcan
+
+                          @can('report-ticket-usage')
+                              <li class="menu-item {{ request()->routeIs('report.ticket-usage') ? 'active' : '' }}">
+                                  <a href="{{ route('report.ticket-usage') }}" class="menu-link">
+                                      <div data-i18n="Penggunaan Tiket">Penggunaan Tiket</div>
                                   </a>
                               </li>
                           @endcan

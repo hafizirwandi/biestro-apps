@@ -254,4 +254,85 @@ class ReportController extends Controller
 
         return view('report.popular-wahana', $data);
     }
+
+    public function ticketUsage(Request $request)
+    {
+        [$start, $end, $label, $type] = $this->resolvePeriod($request);
+
+        // Tiket hanya bisa discan pada hari yang sama saat diterbitkan
+        // (lihat ScanController::scan), jadi created_at = tanggal tiket
+        // "seharusnya" dipakai — field yang tepat untuk difilter/dikelompokkan.
+        $query = IssuedTicket::with('wahana:id,name')->whereBetween('created_at', [$start, $end]);
+
+        if ($request->filled('wahana') && $request->wahana !== 'all') {
+            $query->where('wahana_id', $request->wahana);
+        }
+
+        $tickets = $query->get();
+
+        $bucketFormat = match ($type) {
+            'day' => 'H',
+            'year' => 'Y-m',
+            default => $start->diffInDays($end) > 62 ? 'Y-m' : 'Y-m-d',
+        };
+
+        $grouped = $tickets->groupBy(function ($item) use ($bucketFormat) {
+            return Carbon::parse($item->created_at)->format($bucketFormat);
+        });
+
+        $bucketRow = function ($label, $bucket) {
+            $total = $bucket ? $bucket->count() : 0;
+            $used = $bucket ? $bucket->where('is_used', true)->count() : 0;
+            return [
+                'label' => $label,
+                'total' => $total,
+                'used' => $used,
+                'unused' => $total - $used,
+                'pct' => $total > 0 ? round($used / $total * 100, 1) : 0,
+            ];
+        };
+
+        $rows = [];
+        if ($type === 'day') {
+            foreach (range(0, 23) as $hour) {
+                $key = str_pad($hour, 2, '0', STR_PAD_LEFT);
+                $rows[] = $bucketRow($key . ':00', $grouped->get($key));
+            }
+        } elseif ($bucketFormat === 'Y-m') {
+            $period = CarbonPeriod::create($start->copy()->startOfMonth(), '1 month', $end);
+            foreach ($period as $date) {
+                $rows[] = $bucketRow($date->format('F Y'), $grouped->get($date->format('Y-m')));
+            }
+        } else {
+            $period = CarbonPeriod::create($start, $end);
+            foreach ($period as $date) {
+                $rows[] = $bucketRow($date->format('d M Y'), $grouped->get($date->format('Y-m-d')));
+            }
+        }
+
+        $byWahana = $tickets
+            ->groupBy(fn($t) => $t->wahana->name ?? '-')
+            ->map(function ($group, $name) {
+                $total = $group->count();
+                $used = $group->where('is_used', true)->count();
+                return [
+                    'wahana' => $name,
+                    'total' => $total,
+                    'used' => $used,
+                    'unused' => $total - $used,
+                    'pct' => $total > 0 ? round($used / $total * 100, 1) : 0,
+                ];
+            })
+            ->sortByDesc('total')
+            ->values();
+
+        $data['rows'] = $rows;
+        $data['byWahana'] = $byWahana;
+        $data['label'] = $label;
+        $data['grandTotal'] = $tickets->count();
+        $data['grandUsed'] = $tickets->where('is_used', true)->count();
+        $data['wahanaList'] = Wahana::orderBy('name')->get();
+
+        return view('report.ticket-usage', $data);
+    }
 }
