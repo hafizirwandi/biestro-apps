@@ -72,7 +72,20 @@
                                          <button class="btn btn-icon" onclick="info(`{{ $r->id }}`)"><i
                                                  class="ti ti-info-circle"></i></button>
 
+                                         @can('transaction-delete')
+                                             <a href="javascript:;" onclick="confirmDelete({{ $r->id }})"
+                                                 class="btn btn-icon text-danger">
+                                                 <i class="ti ti-trash ti-sm"></i>
+                                             </a>
 
+                                             <form id="delete-form-{{ $r->id }}" method="post"
+                                                 action="{{ route('report.transaction.destroy') }}"
+                                                 style="display: none;">
+                                                 @csrf
+                                                 @method('delete')
+                                                 <input type="hidden" name="id" value="{{ $r->id }}">
+                                             </form>
+                                         @endcan
                                      </div>
                                  </td>
                              </tr>
@@ -103,5 +116,27 @@
              $("#myModal").modal("show");
 
          }
+
+         @can('transaction-delete')
+             function confirmDelete(id) {
+                 Swal.fire({
+                     title: "Hapus transaksi ini?",
+                     text: "Data transaksi, detail item, free gift, dan tiket terkait akan dihapus permanen dan tidak bisa dikembalikan!",
+                     icon: "warning",
+                     customClass: {
+                         confirmButton: 'btn btn-danger waves-effect waves-light',
+                         cancelButton: 'btn btn-secondary waves-effect waves-light',
+                     },
+                     buttonsStyling: false,
+                     showCancelButton: true,
+                     confirmButtonText: "Ya, Hapus",
+                     cancelButtonText: "Batal"
+                 }).then((result) => {
+                     if (result.isConfirmed) {
+                         document.getElementById(`delete-form-${id}`).submit();
+                     }
+                 });
+             }
+         @endcan
      </script>
  @endsection

@@ -10,6 +10,7 @@ use App\Models\TransactionDetail;
 use App\Models\Wahana;
 use App\Http\Controllers\Concerns\ResolvesPeriod;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Intervention\Image\Colors\Rgb\Channels\Red;
 
 class ReportController extends Controller
@@ -38,6 +39,26 @@ class ReportController extends Controller
 
         return view('report.transaction', $data);
     }
+    public function destroyTransaction(Request $request)
+    {
+        $request->validate(['id' => 'required|exists:transactions,id']);
+
+        try {
+            DB::transaction(function () use ($request) {
+                $transaction = Transaction::findOrFail($request->input('id'));
+
+                IssuedTicket::where('transaction_id', $transaction->id)->delete();
+                $transaction->details()->delete();
+                $transaction->freeGifts()->delete();
+                $transaction->delete();
+            });
+
+            return back()->with('success', 'Transaksi berhasil dihapus');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
     public function ticket(Request $request)
     {
         $data['wahana'] = Wahana::all();

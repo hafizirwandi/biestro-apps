@@ -309,6 +309,7 @@ Route::middleware('auth:web')->group(function () {
         Route::get('/ticket-usage', [ReportController::class, 'ticketUsage'])->name('report.ticket-usage')->middleware('can:report-ticket-usage');
 
         Route::get('/detail-transaction-modal/{id}', [ReportController::class, 'detailTransactionModal'])->name('report.detail-transaction-modal');
+        Route::delete('/transaction', [ReportController::class, 'destroyTransaction'])->name('report.transaction.destroy')->middleware('can:transaction-delete');
     });
 
     // Printer (Web Bluetooth)

@@ -56,6 +56,7 @@ class PermissionSeeder extends Seeder
         'report-revenue',
         'report-popular-wahana',
         'report-ticket-usage',
+        'transaction-delete',
         'scan-access',
         'scan-unflag',
         'playground-access',
