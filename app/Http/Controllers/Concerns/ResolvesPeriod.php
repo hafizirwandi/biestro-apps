@@ -59,4 +59,26 @@ trait ResolvesPeriod
 
         return [$start, $end, $label, $type];
     }
+
+    /**
+     * Resolve a [start, end] Carbon range from a request's `period` string
+     * ("start - end", as used by bs-rangepicker-basic), defaulting to the
+     * current month when no period is given. Used by report queries that
+     * only take a plain `period` filter (no day/week/month/year `type`) —
+     * ensures they never run an unbounded scan of the whole table.
+     */
+    protected function resolveOptionalPeriod(Request $request): array
+    {
+        if ($request->filled('period')) {
+            $dates = explode(' - ', $request->period);
+            $start = Carbon::parse(trim($dates[0]))->startOfDay();
+            $end = Carbon::parse(trim($dates[1] ?? $dates[0]))->endOfDay();
+        } else {
+            $now = Carbon::now();
+            $start = $now->copy()->startOfMonth();
+            $end = $now->copy()->endOfMonth();
+        }
+
+        return [$start, $end];
+    }
 }

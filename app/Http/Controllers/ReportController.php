@@ -21,14 +21,11 @@ class ReportController extends Controller
     {
         $query = Transaction::query()->where('payment_status', 'paid');
 
-        // Filter periode
-        if ($request->filled('period')) {
-            $dates = explode(' - ', $request->period);
-            $startDate = Carbon::parse(trim($dates[0]))->startOfDay();
-            $endDate = Carbon::parse(trim($dates[1]))->endOfDay();
-
-            $query->whereBetween('paid_at', [$startDate, $endDate]);
-        }
+        // Filter periode — defaults to the current month when not given, so
+        // this never does an unbounded scan of every paid transaction ever
+        // (that exhausted PHP's memory_limit once the table grew large).
+        [$startDate, $endDate] = $this->resolveOptionalPeriod($request);
+        $query->whereBetween('paid_at', [$startDate, $endDate]);
 
         // Filter metode pembayaran
         if ($request->filled('method') && $request->method !== 'all') {
@@ -64,14 +61,9 @@ class ReportController extends Controller
         $data['wahana'] = Wahana::all();
         $query = IssuedTicket::query();
 
-        // Filter periode
-        if ($request->filled('period')) {
-            $dates = explode(' - ', $request->period);
-            $startDate = Carbon::parse(trim($dates[0]))->startOfDay();
-            $endDate = Carbon::parse(trim($dates[1]))->endOfDay();
-
-            $query->whereBetween('created_at', [$startDate, $endDate]);
-        }
+        // Filter periode — defaults to the current month when not given.
+        [$startDate, $endDate] = $this->resolveOptionalPeriod($request);
+        $query->whereBetween('created_at', [$startDate, $endDate]);
 
         if ($request->filled('wahana') && $request->wahana !== 'all') {
             $query->where('wahana_id', $request->wahana);
@@ -104,12 +96,9 @@ class ReportController extends Controller
     {
         $query = \App\Models\CashierShift::with('user');
 
-        if ($request->filled('period')) {
-            $dates = explode(' - ', $request->period);
-            $startDate = Carbon::parse(trim($dates[0]))->startOfDay();
-            $endDate = Carbon::parse(trim($dates[1]))->endOfDay();
-            $query->whereBetween('opened_at', [$startDate, $endDate]);
-        }
+        // Filter periode — defaults to the current month when not given.
+        [$startDate, $endDate] = $this->resolveOptionalPeriod($request);
+        $query->whereBetween('opened_at', [$startDate, $endDate]);
 
         if ($request->filled('user_id') && $request->user_id !== 'all') {
             $query->where('user_id', $request->user_id);
@@ -122,14 +111,12 @@ class ReportController extends Controller
 
     public function items(Request $request)
     {
-        $query = TransactionDetail::with(['ticket', 'ticketPackage', 'transaction'])->whereHas('transaction', function ($q) use ($request) {
-            $q->where('payment_status', 'paid');
-            if ($request->filled('period')) {
-                $dates = explode(' - ', $request->period);
-                $startDate = Carbon::parse(trim($dates[0]))->startOfDay();
-                $endDate = Carbon::parse(trim($dates[1]))->endOfDay();
-                $q->whereBetween('paid_at', [$startDate, $endDate]);
-            }
+        // Filter periode — defaults to the current month when not given.
+        [$startDate, $endDate] = $this->resolveOptionalPeriod($request);
+
+        $query = TransactionDetail::with(['ticket', 'ticketPackage', 'transaction'])->whereHas('transaction', function ($q) use ($startDate, $endDate) {
+            $q->where('payment_status', 'paid')
+                ->whereBetween('paid_at', [$startDate, $endDate]);
         });
 
         $details = $query->get();
@@ -157,12 +144,9 @@ class ReportController extends Controller
     {
         $query = Transaction::where('payment_status', 'paid');
 
-        if ($request->filled('period')) {
-            $dates = explode(' - ', $request->period);
-            $startDate = Carbon::parse(trim($dates[0]))->startOfDay();
-            $endDate = Carbon::parse(trim($dates[1]))->endOfDay();
-            $query->whereBetween('paid_at', [$startDate, $endDate]);
-        }
+        // Filter periode — defaults to the current month when not given.
+        [$startDate, $endDate] = $this->resolveOptionalPeriod($request);
+        $query->whereBetween('paid_at', [$startDate, $endDate]);
 
         $transactions = $query->get();
 
