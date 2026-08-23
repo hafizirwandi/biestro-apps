@@ -1490,7 +1490,13 @@
                 const label = btn.querySelector('#btnConnectBTLabel, .btnConnectBTLabel, span:last-child');
                 const dot = btn.querySelector('#printerDot, .printerDot, .printer-dot');
 
-                if (window.BTPrinter?.isConnected) {
+                if (window.PRINT_MODE === 'bridge') {
+                    // Print Bridge doesn't pair — readiness is checked at print
+                    // time (connectOrReconnect -> /health), not here.
+                    btn.classList.add('connected');
+                    if (dot) dot.classList.add('connected');
+                    if (label) label.textContent = 'Print Bridge Aktif';
+                } else if (window.BTPrinter?.isConnected) {
                     btn.classList.add('connected');
                     if (dot) dot.classList.add('connected');
                     if (label) label.textContent = 'Printer Terhubung ✓';
@@ -1522,6 +1528,22 @@
             } catch (e) {
                 btn.disabled = false;
                 label.textContent = 'Connect Printer';
+
+                // Bridge mode has no BT device to scan for — show the bridge
+                // error as-is instead of offering a Bluetooth pairing popup.
+                if (window.PRINT_MODE === 'bridge') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Print Bridge tidak terdeteksi',
+                        text: e.message,
+                        customClass: {
+                            confirmButton: 'btn btn-primary waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                    return;
+                }
+
                 const result = await Swal.fire({
                     icon: 'warning',
                     title: 'Gagal reconnect',
@@ -1570,6 +1592,9 @@
                 try {
                     connected = await window.BTPrinter.connectOrReconnect();
                 } catch (connErr) {
+                    // Bridge mode: no BT device to scan for, surface the bridge error directly.
+                    if (window.PRINT_MODE === 'bridge') throw connErr;
+
                     const result = await Swal.fire({
                         icon: 'warning',
                         title: 'Printer tidak terkoneksi',
@@ -1656,6 +1681,9 @@
                 try {
                     connected = await window.BTPrinter.connectOrReconnect();
                 } catch (connErr) {
+                    // Bridge mode: no BT device to scan for, surface the bridge error directly.
+                    if (window.PRINT_MODE === 'bridge') throw connErr;
+
                     const result = await Swal.fire({
                         icon: 'warning',
                         title: 'Printer tidak terkoneksi',

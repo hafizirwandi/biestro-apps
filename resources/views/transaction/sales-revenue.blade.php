@@ -296,7 +296,12 @@
                 const label = btn.querySelector('#btnConnectBTLabel, .btnConnectBTLabel') || btn.nextElementSibling;
                 const dot = btn.querySelector('#printerDot, .printerDot');
 
-                if (window.BTPrinter?.isConnected) {
+                if (window.PRINT_MODE === 'bridge') {
+                    btn.classList.remove('btn-outline-secondary');
+                    btn.classList.add('btn-outline-success', 'connected');
+                    if (dot) dot.classList.add('connected');
+                    if (label) label.textContent = 'Print Bridge Aktif';
+                } else if (window.BTPrinter?.isConnected) {
                     btn.classList.remove('btn-outline-secondary');
                     btn.classList.add('btn-outline-success', 'connected');
                     if (dot) dot.classList.add('connected');
@@ -329,6 +334,22 @@
             } catch (e) {
                 btn.disabled = false;
                 label.textContent = 'Connect Printer';
+
+                // Bridge mode has no BT device to scan for — show the bridge
+                // error as-is instead of offering a Bluetooth pairing popup.
+                if (window.PRINT_MODE === 'bridge') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Print Bridge tidak terdeteksi',
+                        text: e.message,
+                        customClass: {
+                            confirmButton: 'btn btn-primary waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                    return;
+                }
+
                 const result = await Swal.fire({
                     icon: 'warning',
                     title: 'Gagal reconnect',
