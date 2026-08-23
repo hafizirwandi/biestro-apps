@@ -68,7 +68,12 @@ class PermissionSeeder extends Seeder
         app()['cache']->forget('spatie.permission.cache');
 
         foreach ($this->permissions as $permission) {
-            Permission::updateOrCreate(['name' => $permission]);
+            // Guard is pinned explicitly instead of relying on
+            // config('auth.defaults.guard') — a stale cached config on any
+            // given server can resolve that to something other than 'web',
+            // which silently creates the permission under the wrong guard
+            // and makes it invisible to the ('web'-guarded) roles below.
+            Permission::updateOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
         // Spatie caches the permission list in-memory per request, separate
@@ -77,16 +82,16 @@ class PermissionSeeder extends Seeder
         // givePermissionTo() below without forcing this cache to reload.
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $role = Role::updateOrCreate(['name' => 'admin']);
+        $role = Role::updateOrCreate(['name' => 'admin', 'guard_name' => 'web']);
 
         foreach ($this->permissions as $perm) {
             $role->givePermissionTo($perm);
         }
 
-        $scanRole = Role::updateOrCreate(['name' => 'scan']);
+        $scanRole = Role::updateOrCreate(['name' => 'scan', 'guard_name' => 'web']);
         $scanRole->givePermissionTo(['scan-access']);
 
-        $playgroundRole = Role::updateOrCreate(['name' => 'playground']);
+        $playgroundRole = Role::updateOrCreate(['name' => 'playground', 'guard_name' => 'web']);
         $playgroundRole->givePermissionTo(['playground-access', 'playground-input', 'playground-report']);
     }
 }
