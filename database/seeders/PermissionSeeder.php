@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
 class PermissionSeeder extends Seeder
@@ -68,6 +69,12 @@ class PermissionSeeder extends Seeder
         foreach ($this->permissions as $permission) {
             Permission::updateOrCreate(['name' => $permission]);
         }
+
+        // Spatie caches the permission list in-memory per request, separate
+        // from the Laravel cache store entry cleared above — permissions
+        // just created via updateOrCreate() won't be visible to
+        // givePermissionTo() below without forcing this cache to reload.
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $role = Role::updateOrCreate(['name' => 'admin']);
 
