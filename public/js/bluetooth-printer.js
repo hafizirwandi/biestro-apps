@@ -9,8 +9,27 @@
 // ──────────────────────────────────────────────
 const ESC = 0x1B, GS = 0x1D, LF = 0x0A;
 
+// Paper width (mm) -> characters per line in Font A.
+// Stored per-device in localStorage because each cashier PC/tablet may use a different printer.
+const PAPER_COLUMNS = { '58': 32, '80': 48 };
+const PAPER_SIZE_KEY = 'printerPaperSize';
+
+function getPaperSize() {
+    try {
+        const v = localStorage.getItem(PAPER_SIZE_KEY);
+        if (PAPER_COLUMNS[v]) return v;
+    } catch (_) {}
+    return '58';
+}
+
+function setPaperSize(size) {
+    if (!PAPER_COLUMNS[size]) return;
+    try { localStorage.setItem(PAPER_SIZE_KEY, size); } catch (_) {}
+    document.dispatchEvent(new CustomEvent('printerPaperSizeChanged', { detail: { size } }));
+}
+
 class EscPos {
-    constructor() { this.buffer = []; }
+    constructor(cols = PAPER_COLUMNS[getPaperSize()]) { this.buffer = []; this.cols = cols; }
     init()               { this.buffer.push(ESC, 0x40); return this; }
     lf(n = 1)            { for (let i = 0; i < n; i++) this.buffer.push(LF); return this; }
     cut()                { this.buffer.push(GS, 0x56, 0x41, 0x05); return this; }
@@ -35,7 +54,7 @@ class EscPos {
         String(str).split(/\\n|\n/).forEach(line => this.textLine(line));
         return this;
     }
-    dashedLine(ch = '-', len = 32) { return this.textLine(ch.repeat(len)); }
+    dashedLine(ch = '-', len = this.cols) { return this.textLine(ch.repeat(len)); }
 
     // Print a QR code (ESC/POS GS ( k command set, model 2)
     // size: module dot size, 1-16 (printer-dependent). 8 fits comfortably on
@@ -57,17 +76,17 @@ class EscPos {
 
     itemRow(name, qty, price, subtotal) {
         const rp = n => 'Rp.' + Number(n).toLocaleString('id-ID');
-        this.textLine(String(name).substring(0, 30));
+        this.textLine(String(name).substring(0, this.cols - 2));
         const left = `  ${qty} x ${rp(price)}`;
         const right = rp(subtotal);
-        const space = ' '.repeat(Math.max(0, 32 - left.length - right.length));
+        const space = ' '.repeat(Math.max(0, this.cols - left.length - right.length));
         return this.textLine(left + space + right);
     }
 
     summaryRow(label, value) {
         const rp = n => 'Rp.' + Number(n).toLocaleString('id-ID');
         const v = rp(value);
-        const space = ' '.repeat(Math.max(0, 32 - label.length - v.length));
+        const space = ' '.repeat(Math.max(0, this.cols - label.length - v.length));
         return this.textLine(label + space + v);
     }
 
@@ -96,6 +115,9 @@ window.BTPrinter = {
     characteristic: null,
     isConnected: false,
     deviceName: '',
+
+    getPaperSize,
+    setPaperSize,
 
     // ── Internal: establish GATT connection to a device ──────
     async _connectDevice(device, logFn) {
@@ -496,12 +518,12 @@ window.BTPrinter = {
         esc.bold(true).textLine(`Grand Total     : ${rp(d.grand_total)}`).bold(false);
 
         if (d.by_method && Object.keys(d.by_method).length) {
-            esc.dashedLine('-', 32);
+            esc.dashedLine();
             esc.textLine('Non-Cash per Metode:');
             Object.entries(d.by_method).forEach(([k, v]) => esc.textLine(`  ${k || '-'} : ${rp(v)}`));
         }
         if (d.by_channel && Object.keys(d.by_channel).length) {
-            esc.dashedLine('-', 32);
+            esc.dashedLine();
             esc.textLine('Non-Cash per Channel:');
             Object.entries(d.by_channel).forEach(([k, v]) => esc.textLine(`  ${k || '-'} : ${rp(v)}`));
         }

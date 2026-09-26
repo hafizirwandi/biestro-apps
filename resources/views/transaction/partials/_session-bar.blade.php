@@ -214,6 +214,35 @@
         color: #888;
         padding: 8px 16px 4px;
     }
+
+    .pos-dropdown-menu .pdm-paper {
+        display: flex;
+        gap: 6px;
+        padding: 4px 16px 10px;
+    }
+
+    .pos-dropdown-menu .pdm-paper button {
+        flex: 1;
+        padding: 6px 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: #d0d0f0;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+    }
+
+    .pos-dropdown-menu .pdm-paper button:hover {
+        background: rgba(255, 255, 255, 0.09);
+    }
+
+    .pos-dropdown-menu .pdm-paper button.active {
+        background: #7367f0;
+        border-color: #7367f0;
+        color: #fff;
+    }
 </style>
 
 <div class="pos-session-bar">
@@ -304,6 +333,15 @@
 
                 <div class="pdm-divider"></div>
 
+                {{-- Ukuran kertas printer (disimpan per perangkat di localStorage) --}}
+                <div class="pdm-label"><i class="ti ti-receipt"></i> Ukuran Kertas Printer</div>
+                <div class="pdm-paper" id="pdmPaperSize">
+                    <button type="button" data-size="58">58 mm</button>
+                    <button type="button" data-size="80">80 mm</button>
+                </div>
+
+                <div class="pdm-divider"></div>
+
                 {{-- Cashier Closing — semua halaman kecuali close-shift itu sendiri --}}
                 @if ($pageCtx !== 'close-shift')
                     <button class="pdm-btn" onclick="window.location.href='{{ route('transaction.close-shift') }}'">
@@ -336,5 +374,46 @@
                 dotsMenu.classList.remove('show');
             }
         });
+
+        // Paper size picker. Reads localStorage directly because bluetooth-printer.js
+        // may be loaded after this partial; key must match PAPER_SIZE_KEY there.
+        var paperWrap = document.getElementById('pdmPaperSize');
+        if (paperWrap) {
+            var currentPaperSize = function() {
+                try {
+                    return localStorage.getItem('printerPaperSize') === '80' ? '80' : '58';
+                } catch (_) {
+                    return '58';
+                }
+            };
+            var renderPaperSize = function() {
+                var size = currentPaperSize();
+                paperWrap.querySelectorAll('button').forEach(function(b) {
+                    b.classList.toggle('active', b.dataset.size === size);
+                });
+            };
+            paperWrap.addEventListener('click', function(e) {
+                var btn = e.target.closest('button[data-size]');
+                if (!btn) return;
+                e.stopPropagation();
+                if (window.BTPrinter?.setPaperSize) {
+                    window.BTPrinter.setPaperSize(btn.dataset.size);
+                } else {
+                    try { localStorage.setItem('printerPaperSize', btn.dataset.size); } catch (_) {}
+                }
+                renderPaperSize();
+                if (window.Swal) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Ukuran kertas: ' + btn.dataset.size + ' mm',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                }
+            });
+            renderPaperSize();
+        }
     })();
 </script>
